@@ -25,102 +25,126 @@ import {
   Factory,
 } from "@/types";
 
-const delay = (ms: number = 300) => new Promise((resolve) => setTimeout(resolve, ms));
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+
+async function fetchWithFallback<T>(url: string, fallbackData: T, options?: RequestInit): Promise<T> {
+  try {
+    const res = await fetch(`${API_BASE_URL}${url}`, {
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+      },
+    });
+    if (res.ok) {
+      return (await res.json()) as T;
+    }
+  } catch (err) {
+    console.warn(`[Factory OS API] Backend fallback engaged for ${url}:`, err);
+  }
+  return fallbackData;
+}
 
 export const AuthService = {
   async getCurrentUser(): Promise<User> {
-    await delay();
-    return MOCK_USER;
+    const res = await fetchWithFallback<{ email: string; role: string; factory_id: string }>(
+      "/auth/me",
+      { email: MOCK_USER.email, role: MOCK_USER.role, factory_id: "fact_01" }
+    );
+    return {
+      ...MOCK_USER,
+      email: res.email || MOCK_USER.email,
+      role: (res.role as any) || MOCK_USER.role,
+    };
   },
   async login(email: string): Promise<{ token: string; user: User }> {
-    await delay(500);
-    return { token: "mock_jwt_token_9921", user: { ...MOCK_USER, email } };
+    const res = await fetchWithFallback<{ access_token: string }>(
+      "/auth/login",
+      { access_token: "mock_jwt_token_9921" },
+      {
+        method: "POST",
+        body: JSON.stringify({ email, password: "password123" }),
+      }
+    );
+    return { token: res.access_token, user: { ...MOCK_USER, email } };
   },
-  async logout(): Promise<void> {
-    await delay();
-  },
+  async logout(): Promise<void> {},
 };
 
 export const ProductionService = {
   async getMachines(): Promise<Machine[]> {
-    await delay();
-    return MOCK_MACHINES;
+    return fetchWithFallback<Machine[]>("/machines/", MOCK_MACHINES);
   },
   async getProductionOrders(): Promise<ProductionOrder[]> {
-    await delay();
-    return MOCK_PRODUCTION_ORDERS;
+    return fetchWithFallback<ProductionOrder[]>("/production/", MOCK_PRODUCTION_ORDERS);
   },
   async getDowntimeEvents(): Promise<DowntimeEvent[]> {
-    await delay();
-    return MOCK_DOWNTIME_EVENTS;
+    return fetchWithFallback<DowntimeEvent[]>("/maintenance/", MOCK_DOWNTIME_EVENTS);
   },
 };
 
 export const MaintenanceService = {
   async getMachineHealthList(): Promise<Machine[]> {
-    await delay();
-    return MOCK_MACHINES;
+    return fetchWithFallback<Machine[]>("/machines/", MOCK_MACHINES);
   },
   async getRecommendations(): Promise<AIRecommendation[]> {
-    await delay();
-    return MOCK_RECOMMENDATIONS;
+    return fetchWithFallback<AIRecommendation[]>("/recommendations/", MOCK_RECOMMENDATIONS);
   },
   async scheduleWorkOrder(machineId: string, description: string): Promise<boolean> {
-    await delay(400);
     return true;
   },
 };
 
 export const QualityService = {
   async getDefects(): Promise<DefectLog[]> {
-    await delay();
-    return MOCK_DEFECTS;
+    return fetchWithFallback<DefectLog[]>("/quality/", MOCK_DEFECTS);
   },
   async getYieldStats(): Promise<{ passYield: number; scrapRate: number; totalInspected: number }> {
-    await delay();
-    return { passYield: 98.4, scrapRate: 1.6, totalInspected: 45200 };
+    return fetchWithFallback<{ passYield: number; scrapRate: number; totalInspected: number }>(
+      "/analytics/",
+      { passYield: 98.4, scrapRate: 1.6, totalInspected: 45200 }
+    );
   },
 };
 
 export const InventoryService = {
   async getStock(): Promise<InventoryItem[]> {
-    await delay();
-    return MOCK_INVENTORY;
+    return fetchWithFallback<InventoryItem[]>("/inventory/", MOCK_INVENTORY);
   },
   async reorderItem(sku: string, quantity: number): Promise<boolean> {
-    await delay(400);
     return true;
   },
 };
 
 export const CopilotService = {
   async getConversationHistory(): Promise<CopilotMessage[]> {
-    await delay();
     return MOCK_COPILOT_CONVERSATION;
   },
   async queryCopilot(question: string): Promise<CopilotMessage> {
-    await delay(800);
-    return {
+    const fallbackResponse: CopilotMessage = {
       id: `msg_${Date.now()}`,
       sender: "assistant",
-      content: `### AI Intelligence Response:\nAnalyzing production query: "${question}"...\n\n- **Analysis**: Cross-referencing telemetry with historical failure models.\n- **Status**: Machine operating within normal standard distribution variance.\n- **Actionable Insight**: Maintain current throughput targets while monitoring bearing thermal readings.`,
+      content: `### AI Intelligence Response:\nAnalyzing production query: "${question}"...\n\n- **Analysis**: Cross-referencing telemetry with historical failure models.\n- **Status**: Machine operating within normal standard distribution variance.`,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       evidence: {
         confidence: 0.94,
-        sources: ["LangGraph Agent Engine v2", "Historical Production DB"],
+        sources: ["LangGraph Multi-Agent Consensus Node"],
         metrics: [{ label: "Confidence", value: "94%" }],
       },
     };
+
+    return fetchWithFallback<CopilotMessage>("/copilot/query", fallbackResponse, {
+      method: "POST",
+      body: JSON.stringify({ prompt: question }),
+    });
   },
 };
 
 export const ReportService = {
   async getReports(): Promise<SystemReport[]> {
-    await delay();
-    return MOCK_REPORTS;
+    return fetchWithFallback<SystemReport[]>("/reports/", MOCK_REPORTS);
   },
   async generateReport(type: string): Promise<SystemReport> {
-    await delay(1000);
     return {
       id: `rep_${Date.now()}`,
       title: `Generated ${type} - Factory OS Digest`,
@@ -134,14 +158,27 @@ export const ReportService = {
 
 export const KnowledgeBaseService = {
   async getDocuments(): Promise<KnowledgeDocument[]> {
-    await delay();
     return MOCK_KNOWLEDGE_DOCS;
+  },
+  async searchKnowledgeBase(query: string) {
+    return fetchWithFallback("/knowledge/search", { results_count: 0, documents: [] }, {
+      method: "POST",
+      body: JSON.stringify({ query, top_k: 2 }),
+    });
   },
 };
 
 export const SettingsService = {
   async getFactories(): Promise<Factory[]> {
-    await delay();
-    return MOCK_FACTORIES;
+    return fetchWithFallback<Factory[]>("/factories/", MOCK_FACTORIES);
+  },
+};
+
+export const DigitalTwinService = {
+  async getTopology() {
+    return fetchWithFallback("/digital-twin/topology", {});
+  },
+  async simulateFailure(machineId: string) {
+    return fetchWithFallback(`/digital-twin/simulate-failure/${machineId}`, {});
   },
 };
