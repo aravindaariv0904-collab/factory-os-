@@ -16,6 +16,7 @@ from backend.app.api.v1 import (
     stream,
     predict,
     knowledge,
+    digital_twin,
 )
 
 v1_router = APIRouter()
@@ -36,3 +37,4 @@ v1_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics
 v1_router.include_router(stream.router, prefix="/stream", tags=["Real-Time Streaming"])
 v1_router.include_router(predict.router, prefix="/predict", tags=["ML Predictions"])
 v1_router.include_router(knowledge.router, prefix="/knowledge", tags=["RAG Knowledge Base"])
+v1_router.include_router(digital_twin.router, prefix="/digital-twin", tags=["Digital Twin & SHAP"])
