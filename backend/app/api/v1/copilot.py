@@ -1,23 +1,28 @@
 from fastapi import APIRouter
 from backend.app.schemas.ai import CopilotQueryRequest, CopilotQueryResponse, EvidenceData, EvidenceMetrics
+from backend.app.ai.agents.supervisor import SupervisorAgent
 from datetime import datetime
 
 router = APIRouter()
 
 @router.post("/query", response_model=CopilotQueryResponse)
 async def query_copilot(req: CopilotQueryRequest):
+    orchestration = SupervisorAgent.orchestrate(req.prompt)
+
+    metrics = [
+        EvidenceMetrics(label=m["label"], value=m["value"], trend=m.get("trend"))
+        for m in orchestration["metrics"]
+    ]
+
     return CopilotQueryResponse(
         id=f"msg_{int(datetime.now().timestamp())}",
         sender="assistant",
-        content=f"### LangGraph Multi-Agent Analysis\nQuery: **{req.prompt}**\n\n1. **Telemetry Match**: Machine operating within normal standard distribution variance.\n2. **Financial Impact**: Preventive maintenance avoids an estimated **$18,500** in unplanned downtime.\n3. **Recommended Action**: Monitor spindle bearing thermal readings.",
+        content=orchestration["content"],
         timestamp=datetime.now().strftime("%H:%M"),
         evidence=EvidenceData(
-            confidence=0.96,
-            sources=["IoT Vibration Telemetry", "LangGraph Agent Node v2.4"],
-            metrics=[
-                EvidenceMetrics(label="Confidence", value="96.4%", trend="High"),
-                EvidenceMetrics(label="Est. Savings", value="$18,500", trend="Saved"),
-            ],
-            recommendations=["Dispatch Crew #1 to inspect spindle housing"],
+            confidence=orchestration["confidence"],
+            sources=orchestration["sources"],
+            metrics=metrics,
+            recommendations=orchestration["recommendations"],
         ),
     )
