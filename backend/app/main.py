@@ -2,16 +2,18 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from backend.app.api.v1.router import v1_router
+from backend.app.core.middleware import SecurityHeadersMiddleware
 
 app = FastAPI(
     title="Factory OS AI Decision Intelligence API",
     description="Enterprise Manufacturing Decision Intelligence Backend Platform",
-    version="2.0.0",
+    version="2.1.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
 
-# CORS Middleware
+# Security Headers & CORS Middleware
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -20,7 +22,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Exception Handler
+# Global Exception Handler
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
     return JSONResponse(
@@ -34,7 +36,8 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "Factory OS Backend",
-        "version": "2.0.0",
+        "version": "2.1.0",
+        "security": "JWT + RBAC + Headers Active",
     }
 
 # Register V1 Routers

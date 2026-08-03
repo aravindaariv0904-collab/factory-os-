@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
 from backend.app.core.security import create_access_token, create_refresh_token
+from backend.app.core.rbac import get_current_user, CurrentUser
 
 router = APIRouter()
 
@@ -13,17 +14,23 @@ class TokenResponse(BaseModel):
     refresh_token: str
     token_type: str = "bearer"
 
+class UserProfileOut(BaseModel):
+    email: str
+    role: str
+    factory_id: str = "fact_01"
+
 @router.post("/login", response_model=TokenResponse)
 async def login(req: LoginRequest):
-    # Mock user verification
     if req.email and req.password:
-        access_token = create_access_token({"sub": req.email, "role": "Plant Manager"})
+        access_token = create_access_token({"sub": req.email, "role": "Plant Manager", "factory_id": "fact_01"})
         refresh_token = create_refresh_token({"sub": req.email})
         return TokenResponse(access_token=access_token, refresh_token=refresh_token)
     raise HTTPException(status_code=401, detail="Invalid credentials")
 
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh_token(token: str):
-    new_access = create_access_token({"sub": "alexander.vance@factoryos.ai", "role": "Plant Manager"})
-    new_refresh = create_refresh_token({"sub": "alexander.vance@factoryos.ai"})
-    return TokenResponse(access_token=new_access, refresh_token=new_refresh)
+@router.get("/me", response_model=UserProfileOut)
+async def get_my_profile(current_user: CurrentUser = Depends(get_current_user)):
+    return UserProfileOut(
+        email=current_user.email,
+        role=current_user.role,
+        factory_id=current_user.factory_id or "fact_01",
+    )
