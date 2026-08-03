@@ -11,9 +11,15 @@ numpy
 scikit-learn
 xgboost
 shap
-langgraph
-langchain-google-genai
 python-dotenv
 celery
 redis
 psycopg2-binary
+httpx
+structlog
+joblib
+onnxruntime
+torch
+scipy
+pytest
+pytest-asyncio

@@ -1,0 +1,51 @@
+{
+  "platform": "Factory OS Industrial AI Platform",
+  "version": "5.0.0",
+  "registered_datasets": [
+    {
+      "id": "ds_cmapss",
+      "name": "NASA Turbofan Engine Degradation (C-MAPSS)",
+      "task": "RUL Regression",
+      "records": 137529,
+      "features": 26,
+      "format": "CSV",
+      "target": "Remaining Useful Life (cycles)"
+    },
+    {
+      "id": "ds_cwru",
+      "name": "CWRU Bearing Fault Dataset",
+      "task": "Bearing Fault Classification",
+      "records": 1200,
+      "features": 8,
+      "format": "CSV",
+      "target": "Fault Type (Inner Race, Outer Race, Ball, Normal)"
+    },
+    {
+      "id": "ds_ai4i",
+      "name": "AI4I 2020 Predictive Maintenance Dataset",
+      "task": "Failure Classification",
+      "records": 10000,
+      "features": 14,
+      "format": "CSV",
+      "target": "Machine Failure & Failure Modes"
+    },
+    {
+      "id": "ds_mvtec",
+      "name": "MVTec Anomaly Detection (MVTec AD)",
+      "task": "Unsupervised Vision Defect Segmentation",
+      "records": 5354,
+      "features": "RGB Image",
+      "format": "PNG",
+      "target": "Pixel Anomaly Mask"
+    },
+    {
+      "id": "ds_swat",
+      "name": "Secure Water Treatment (SWaT) SCADA Dataset",
+      "task": "SCADA Cyber-Physical Anomaly Detection",
+      "records": 946722,
+      "features": 51,
+      "format": "CSV",
+      "target": "Attack State / Anomaly Flag"
+    }
+  ]
+}

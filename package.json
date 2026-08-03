@@ -1,0 +1,21 @@
+{
+  "name": "factory-os",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "concurrently -n backend,ai,frontend -c blue,magenta,green \"npm run dev:backend\" \"npm run dev:ai\" \"npm run dev:frontend\"",
+    "dev:backend": "python -m uvicorn backend.app.main:app --reload --host 0.0.0.0 --port 8000",
+    "dev:ai": "python -m uvicorn ai_service.app.main:app --reload --host 0.0.0.0 --port 8001",
+    "dev:frontend": "cd frontend && npm run dev",
+    "init": "python scripts/init_models.py && python scripts/seed_database.py",
+    "test": "python -m pytest backend/tests ai-service/tests -v",
+    "test:backend": "python -m pytest backend/tests -v",
+    "test:ai": "python -m pytest ai-service/tests -v",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down",
+    "lint:frontend": "cd frontend && npm run lint"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
