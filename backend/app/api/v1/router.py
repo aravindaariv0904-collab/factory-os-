@@ -13,6 +13,7 @@ from backend.app.api.v1 import (
     reports,
     upload,
     analytics,
+    stream,
 )
 
 v1_router = APIRouter()
@@ -30,3 +31,4 @@ v1_router.include_router(alerts.router, prefix="/alerts", tags=["Alerts"])
 v1_router.include_router(reports.router, prefix="/reports", tags=["Reports"])
 v1_router.include_router(upload.router, prefix="/upload", tags=["Data Upload"])
 v1_router.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+v1_router.include_router(stream.router, prefix="/stream", tags=["Real-Time Streaming"])
