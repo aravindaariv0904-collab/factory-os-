@@ -5,9 +5,9 @@ from backend.app.api.v1.router import v1_router
 from backend.app.core.middleware import SecurityHeadersMiddleware
 
 app = FastAPI(
-    title="Factory OS AI Decision Intelligence API",
-    description="Enterprise Manufacturing Decision Intelligence Backend Platform",
-    version="2.1.0",
+    title="Factory OS Enterprise Decision Intelligence Platform",
+    description="Production-Grade Manufacturing AI Decision Intelligence System",
+    version="5.0.0",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -35,9 +35,10 @@ async def global_exception_handler(request: Request, exc: Exception):
 async def health_check():
     return {
         "status": "healthy",
-        "service": "Factory OS Backend",
-        "version": "2.1.0",
-        "security": "JWT + RBAC + Headers Active",
+        "service": "Factory OS Enterprise Platform",
+        "version": "5.0.0",
+        "security": "JWT + RBAC + Multi-Tenant + Security Headers",
+        "ai_engines": "LangGraph Multi-Agent + RAG + SHAP + ML Suite Active",
     }
 
 # Register V1 Routers
