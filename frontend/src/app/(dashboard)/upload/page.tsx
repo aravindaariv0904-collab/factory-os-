@@ -87,7 +87,7 @@ export default function DataUploadPage() {
             {fileUploaded && (
               <span className="mt-3 inline-flex items-center gap-1 text-xs text-emerald-400 font-semibold bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
                 <CheckCircle2 className="w-4 h-4" />{" "}
-                {(uploadMeta?.record_count ?? 14200).toLocaleString()} records parsed via {uploadMeta?.status ?? "pipeline"}
+                {((uploadMeta?.record_count as number | undefined) ?? 14200).toLocaleString()} records parsed via {uploadMeta?.status ?? "pipeline"}
               </span>
             )}
           </div>

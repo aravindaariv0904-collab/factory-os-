@@ -53,8 +53,8 @@ export default function InventoryPage() {
       accessor: (row) => (
         <div className="w-36">
           <div className="flex justify-between text-[11px] mb-1">
-            <span className="font-bold text-slate-100">{row.quantity.toLocaleString()}</span>
-            <span className="text-slate-500">Min: {row.minThreshold.toLocaleString()}</span>
+            <span className="font-bold text-slate-100">{(row.quantity ?? 0).toLocaleString()}</span>
+            <span className="text-slate-500">Min: {(row.minThreshold ?? 0).toLocaleString()}</span>
           </div>
           <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
             <div

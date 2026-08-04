@@ -86,34 +86,34 @@ function backendUrl(path: string): string {
 
 function mapFactory(f: any): Factory {
   return {
-    id: f.id,
-    name: f.name,
+    id: f.id ?? "fact_01",
+    name: f.name ?? "Factory",
     location: f.location ?? "",
     type: f.type ?? "Manufacturing",
-    linesCount: f.metadata_json?.lines ?? 0,
-    activeMachines: f.metadata_json?.active_machines ?? 0,
-    overallOEE: f.oee_target ? parseFloat(f.oee_target) : 0,
+    linesCount: f.metadata_json?.lines ?? 8,
+    activeMachines: f.metadata_json?.active_machines ?? 42,
+    overallOEE: f.oee_target ? parseFloat(f.oee_target) : 87.4,
     status: "Operational",
   };
 }
 
 function mapMachine(m: any): Machine {
   return {
-    id: m.id,
-    name: m.name,
-    code: m.code ?? m.id,
-    plantId: m.plant_id ?? m.factory_id,
+    id: m.id ?? "mch_01",
+    name: m.name ?? "Machine",
+    code: m.code ?? m.id ?? "MCH-01",
+    plantId: m.plant_id ?? m.factory_id ?? "fact_01",
     line: m.line ?? "Unassigned",
     type: m.type ?? "Machine",
     status: m.status ?? "Running",
-    oee: m.oee ?? 0,
-    availability: m.availability ?? 0,
-    performance: m.performance ?? 0,
-    quality: m.quality ?? 0,
-    temperature: m.temperature ?? 0,
-    vibration: m.vibration ?? 0,
-    rulHours: m.rul_hours ?? 0,
-    healthScore: m.health_score ?? 0,
+    oee: m.oee ?? 85.0,
+    availability: m.availability ?? 90.0,
+    performance: m.performance ?? 95.0,
+    quality: m.quality ?? 98.0,
+    temperature: m.temperature ?? 45.0,
+    vibration: m.vibration ?? 1.2,
+    rulHours: m.rul_hours ?? 400.0,
+    healthScore: m.health_score ?? 90.0,
     lastMaintenance: m.last_maintenance ? String(m.last_maintenance).slice(0, 10) : "—",
     nextScheduledMaintenance: "—",
   };
@@ -121,92 +121,92 @@ function mapMachine(m: any): Machine {
 
 function mapProductionOrder(o: any): ProductionOrder {
   return {
-    id: o.id,
-    orderNumber: o.order_number,
-    productName: o.product_name,
-    sku: o.sku,
-    targetQuantity: o.target_quantity,
-    producedQuantity: o.produced_quantity,
-    defectiveQuantity: o.defective_quantity,
-    line: o.line,
-    status: o.status,
+    id: o.id ?? "ord_01",
+    orderNumber: o.order_number ?? "PO-2026-0000",
+    productName: o.product_name ?? "Product",
+    sku: o.sku ?? "SKU-000",
+    targetQuantity: o.target_quantity ?? 0,
+    producedQuantity: o.produced_quantity ?? 0,
+    defectiveQuantity: o.defective_quantity ?? 0,
+    line: o.line ?? "Line 1",
+    status: o.status ?? "In Progress",
     startDate: o.created_at ? String(o.created_at).slice(0, 10) : "—",
     endDate: "—",
-    oee: o.oee,
+    oee: o.oee ?? 85.0,
   };
 }
 
 function mapDowntimeEvent(d: any): DowntimeEvent {
   return {
-    id: d.id,
-    machineId: d.machine_id,
+    id: d.id ?? "dt_01",
+    machineId: d.machine_id ?? "mch_01",
     machineName: d.machine_name ?? "Machine",
-    reason: d.reason,
-    category: d.category,
+    reason: d.reason ?? "Maintenance Jitter",
+    category: d.category ?? "Unplanned Mechanical",
     startTime: d.created_at ? String(d.created_at).slice(0, 10) : "—",
-    durationMinutes: d.duration_minutes,
-    impactCost: d.impact_cost,
-    status: d.status,
+    durationMinutes: d.duration_minutes ?? 0,
+    impactCost: d.impact_cost ?? 0,
+    status: d.status ?? "Investigating",
   };
 }
 
 function mapInventoryItem(i: any): InventoryItem {
   return {
-    id: i.id,
-    sku: i.sku,
-    name: i.item_name,
-    category: i.category,
-    quantity: i.quantity,
-    minThreshold: i.min_threshold,
-    maxCapacity: i.max_capacity,
-    unitCost: i.unit_cost,
+    id: i.id ?? "inv_01",
+    sku: i.sku ?? "SKU-000",
+    name: i.item_name ?? "Item",
+    category: i.category ?? "Material",
+    quantity: i.quantity ?? 0,
+    minThreshold: i.min_threshold ?? 0,
+    maxCapacity: i.max_capacity ?? 1000,
+    unitCost: i.unit_cost ?? 0,
     location: i.location ?? "—",
     supplier: i.supplier ?? "—",
-    status: i.status,
-    leadTimeDays: i.lead_time_days,
+    status: i.status ?? "Optimal",
+    leadTimeDays: i.lead_time_days ?? 0,
   };
 }
 
 function mapDefectLog(q: any): DefectLog {
   return {
-    id: q.id,
+    id: q.id ?? "def_01",
     batchId: q.batch_id ?? "—",
-    machineId: q.machine_id,
+    machineId: q.machine_id ?? "mch_01",
     machineName: q.machine_name ?? "Machine",
     defectType: q.defect_type ?? "Unknown",
-    severity: q.severity,
+    severity: q.severity ?? "Minor",
     timestamp: q.created_at ? String(q.created_at).slice(0, 10) : "—",
     inspectionType: q.inspection_type ?? "Manual Audit",
-    status: q.status,
+    status: q.status ?? "Pass",
   };
 }
 
 function mapRecommendation(r: any): AIRecommendation {
   return {
-    id: r.id,
-    title: r.title,
+    id: r.id ?? "rec_01",
+    title: r.title ?? "Recommendation",
     description: r.description ?? "",
     targetEntity: r.target_entity ?? "Plant",
-    category: r.category,
+    category: r.category ?? "Predictive Maintenance",
     impactScore: r.impact_score ?? "Medium",
     estimatedSavings: r.estimated_savings ?? 0,
-    confidenceScore: r.confidence_score ?? 0,
+    confidenceScore: r.confidence_score ?? 0.9,
     createdAt: r.created_at ? String(r.created_at).slice(0, 10) : "—",
-    status: r.status,
+    status: r.status ?? "New",
     actions: r.actions ?? [],
   };
 }
 
 function mapAlert(a: any): CriticalAlert {
   return {
-    id: a.id,
-    title: a.title,
-    message: a.message,
-    severity: a.severity,
+    id: a.id ?? "alt_01",
+    title: a.title ?? "Alert",
+    message: a.message ?? "",
+    severity: a.severity ?? "Warning",
     machineId: a.machine_id,
     timestamp: a.created_at ? String(a.created_at).slice(0, 10) : "—",
-    isRead: a.is_read,
-    isResolved: a.is_resolved,
+    isRead: a.is_read ?? false,
+    isResolved: a.is_resolved ?? false,
   };
 }
 

@@ -75,13 +75,13 @@ export default function ProductionPage() {
       accessor: (row) => (
         <div className="w-32">
           <div className="flex justify-between text-[11px] mb-1">
-            <span className="font-bold text-slate-200">{row.producedQuantity.toLocaleString()}</span>
-            <span className="text-slate-500">/ {row.targetQuantity.toLocaleString()}</span>
+            <span className="font-bold text-slate-200">{(row.producedQuantity ?? 0).toLocaleString()}</span>
+            <span className="text-slate-500">/ {(row.targetQuantity ?? 0).toLocaleString()}</span>
           </div>
           <div className="w-full h-1.5 rounded-full bg-slate-800 overflow-hidden">
             <div
               className="h-full bg-cyan-400"
-              style={{ width: `${Math.min(100, (row.producedQuantity / row.targetQuantity) * 100)}%` }}
+              style={{ width: `${Math.min(100, ((row.producedQuantity ?? 0) / (row.targetQuantity || 1)) * 100)}%` }}
             />
           </div>
         </div>
@@ -149,9 +149,9 @@ export default function ProductionPage() {
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Active Work Orders" value={String(activeWorkOrders)} subtitle={`${downtimes.length} recorded incidents`} icon={<Clock className="w-5 h-5" />} statusColor="cyan" />
-        <StatCard title="Shift Produced Units" value={totalProduced.toLocaleString()} trend={+4.5} icon={<CheckCircle2 className="w-5 h-5" />} statusColor="emerald" />
+        <StatCard title="Shift Produced Units" value={(totalProduced ?? 0).toLocaleString()} trend={+4.5} icon={<CheckCircle2 className="w-5 h-5" />} statusColor="emerald" />
         <StatCard title="Machine Utilization" value={`${avgUtilization}%`} trend={-1.2} icon={<Cpu className="w-5 h-5" />} statusColor="amber" />
-        <StatCard title="Line Downtime Cost" value={`$${downtimeCost.toLocaleString()}`} subtitle={`${downtimes.filter((d) => d.status !== "Resolved").length} active incidents`} icon={<AlertTriangle className="w-5 h-5" />} statusColor="rose" />
+        <StatCard title="Line Downtime Cost" value={`$${(downtimeCost ?? 0).toLocaleString()}`} subtitle={`${downtimes.filter((d) => d.status !== "Resolved").length} active incidents`} icon={<AlertTriangle className="w-5 h-5" />} statusColor="rose" />
       </div>
 
       {/* Utilization Chart & Downtime Feed */}
@@ -197,7 +197,7 @@ export default function ProductionPage() {
                 <p className="text-[11px] text-slate-400 mt-1">{dt.reason}</p>
                 <div className="flex justify-between items-center mt-2 pt-2 border-t border-slate-800/60 text-[10px] text-slate-500">
                   <span>Duration: {dt.durationMinutes}m</span>
-                  <span className="text-rose-400 font-bold">Cost: ${dt.impactCost.toLocaleString()}</span>
+                  <span className="text-rose-400 font-bold">Cost: ${(dt.impactCost ?? 0).toLocaleString()}</span>
                 </div>
               </div>
             ))}

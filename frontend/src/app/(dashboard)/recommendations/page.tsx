@@ -46,7 +46,7 @@ export default function RecommendationsPage() {
               </div>
 
               <div className="flex flex-col items-end gap-2 shrink-0">
-                <span className="text-sm font-bold text-emerald-400">Est. Savings: ${rec.estimatedSavings.toLocaleString()}</span>
+                <span className="text-sm font-bold text-emerald-400">Est. Savings: ${(rec.estimatedSavings ?? 0).toLocaleString()}</span>
                 <Button
                   variant="cyan"
                   size="sm"

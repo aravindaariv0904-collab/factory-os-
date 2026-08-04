@@ -108,7 +108,7 @@ export default function QualityPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="First Pass Yield (FPY)" value={`${yieldStats.passYield}%`} trend={+0.8} icon={<CheckCircle2 className="w-5 h-5" />} statusColor="emerald" />
         <StatCard title="Scrap Rate" value={`${yieldStats.scrapRate}%`} trend={-0.3} icon={<AlertTriangle className="w-5 h-5" />} statusColor="rose" />
-        <StatCard title="Total Units Inspected" value={yieldStats.totalInspected.toLocaleString()} subtitle="Shift 1 & 2" icon={<Scan className="w-5 h-5" />} statusColor="cyan" />
+        <StatCard title="Total Units Inspected" value={(yieldStats.totalInspected ?? 0).toLocaleString()} subtitle="Shift 1 & 2" icon={<Scan className="w-5 h-5" />} statusColor="cyan" />
         <StatCard title="AI Vision Precision" value="99.8%" subtitle="Sub-millimeter camera" icon={<Sparkles className="w-5 h-5" />} statusColor="blue" />
       </div>
 

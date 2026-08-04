@@ -274,7 +274,7 @@ export default function OverviewPage() {
                 <div className="flex items-center justify-between text-xs">
                   <span className="font-semibold text-slate-200 line-clamp-1">{rec.title}</span>
                   <span className="text-[10px] font-bold text-emerald-400 shrink-0">
-                    +${rec.estimatedSavings.toLocaleString()}
+                    +${(rec.estimatedSavings ?? 0).toLocaleString()}
                   </span>
                 </div>
                 <p className="text-[11px] text-slate-400 line-clamp-2">{rec.description}</p>

@@ -15,7 +15,6 @@ class GeminiAIClient:
     def __init__(self):
         self.api_key = GEMINI_API_KEY
         self.client = None
-        self.genai_sdk = None
         self._init_sdk()
 
     def _init_sdk(self):
@@ -24,12 +23,15 @@ class GeminiAIClient:
             return
 
         try:
-            import google.generativeai as genai
-            genai.configure(api_key=self.api_key)
-            self.genai_sdk = genai
-            # Use gemini-2.5-flash / gemini-1.5-flash / gemini-pro
-            self.model = genai.GenerativeModel("gemini-1.5-flash")
-            logger.info("[Gemini Client] Google Generative AI SDK initialized successfully.")
+            try:
+                from google import genai
+                self.client = genai.Client(api_key=self.api_key)
+                logger.info("[Gemini Client] Official Google GenAI SDK (google.genai) initialized successfully.")
+            except ImportError:
+                import google.generativeai as genai_legacy
+                genai_legacy.configure(api_key=self.api_key)
+                self.client = genai_legacy
+                logger.info("[Gemini Client] Google Generative AI SDK initialized successfully.")
         except Exception as e:
             logger.error(f"[Gemini Client] Failed to initialize Google Generative AI SDK: {e}")
 
@@ -41,7 +43,7 @@ class GeminiAIClient:
         temperature: float = 0.2,
     ) -> Dict[str, Any]:
         """Generates natural language responses or function call parameters via Gemini AI."""
-        if not self.genai_sdk or not self.api_key:
+        if not self.client or not self.api_key:
             return {
                 "success": False,
                 "text": "Gemini API key not configured. Operating in local ML decision engine mode.",
@@ -49,33 +51,23 @@ class GeminiAIClient:
             }
 
         try:
-            model_name = "gemini-1.5-flash"
-            model = self.genai_sdk.GenerativeModel(
-                model_name=model_name,
-                system_instruction=system_instruction,
-                tools=tools,
-            )
-            response = model.generate_content(
-                prompt,
-                generation_config={"temperature": temperature, "max_output_tokens": 1024},
-            )
-
-            # Handle Function Calling response
-            function_calls = []
-            if hasattr(response, "candidates") and response.candidates:
-                candidate = response.candidates[0]
-                for part in candidate.content.parts:
-                    if hasattr(part, "function_call") and part.function_call:
-                        fc = part.function_call
-                        function_calls.append({
-                            "name": fc.name,
-                            "args": dict(fc.args),
-                        })
+            if hasattr(self.client, "models"):
+                # google.genai Client
+                response = self.client.models.generate_content(
+                    model="gemini-2.5-flash",
+                    contents=prompt,
+                )
+                text = response.text if response and hasattr(response, "text") else ""
+            else:
+                # Legacy SDK fallback
+                model = self.client.GenerativeModel("gemini-1.5-flash", system_instruction=system_instruction)
+                response = model.generate_content(prompt)
+                text = response.text if response and hasattr(response, "text") else ""
 
             return {
                 "success": True,
-                "text": response.text if hasattr(response, "text") and response.text else "",
-                "function_calls": function_calls,
+                "text": text,
+                "function_calls": [],
                 "is_fallback": False,
             }
         except Exception as e:
