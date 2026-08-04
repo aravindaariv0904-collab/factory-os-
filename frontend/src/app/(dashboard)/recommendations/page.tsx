@@ -5,9 +5,13 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { MOCK_RECOMMENDATIONS } from "@/mock";
+import { MaintenanceService } from "@/services";
+import { useApiData } from "@/hooks/useApiData";
 import { Zap, ShieldCheck, CheckCircle2, ArrowRight } from "lucide-react";
 
 export default function RecommendationsPage() {
+  const { data: recommendations } = useApiData(MaintenanceService.getRecommendations, MOCK_RECOMMENDATIONS);
+
   return (
     <div className="space-y-6">
       <div>
@@ -21,7 +25,7 @@ export default function RecommendationsPage() {
       </div>
 
       <div className="space-y-4">
-        {MOCK_RECOMMENDATIONS.map((rec) => (
+        {recommendations.map((rec) => (
           <Card key={rec.id} className="border-cyan-500/30 bg-gradient-to-r from-slate-900 via-slate-900 to-cyan-950/20">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-2 max-w-3xl">

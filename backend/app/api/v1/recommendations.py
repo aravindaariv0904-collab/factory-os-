@@ -1,27 +1,19 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from uuid import uuid4
-from datetime import datetime
+from backend.app.db.session import get_db_session
+from backend.app.models import Recommendation
 from backend.app.schemas.ai import AIRecommendationOut
 
 router = APIRouter()
 
-MOCK_RECS = [
-    {
-        "id": uuid4(),
-        "title": "Schedule Preventive Spindle Bearing Replacement on CNC Mill X5",
-        "description": "Vibration telemetry detected 3.8x baseline harmonic anomaly.",
-        "target_entity": "DMG MORI 5-Axis CNC Mill X5",
-        "category": "Predictive Maintenance",
-        "impact_score": "High",
-        "estimated_savings": 42000.0,
-        "confidence_score": 0.96,
-        "status": "New",
-        "actions": ["Issue Work Order #WO-8910"],
-        "created_at": datetime.now(),
-    }
-]
 
 @router.get("/", response_model=List[AIRecommendationOut])
-async def list_recommendations():
-    return MOCK_RECS
+async def list_recommendations(
+    skip: int = 0,
+    limit: int = Query(20, le=100),
+    db: AsyncSession = Depends(get_db_session),
+):
+    result = await db.execute(select(Recommendation).order_by(Recommendation.created_at.desc()).offset(skip).limit(limit))
+    return result.scalars().all()

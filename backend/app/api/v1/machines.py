@@ -1,60 +1,68 @@
-from fastapi import APIRouter, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
-from uuid import uuid4
-from datetime import datetime
-from backend.app.schemas.machine import MachineOut, MachineUpdate
+from uuid import UUID
+from backend.app.db.session import get_db_session
+from backend.app.models import Machine
+from backend.app.schemas.machine import MachineOut, MachineCreate, MachineUpdate
+from backend.app.core.rbac import get_current_user, CurrentUser
 
 router = APIRouter()
 
-MOCK_MACHINES_RESP = [
-    {
-        "id": uuid4(),
-        "plant_id": uuid4(),
-        "name": "KUKA Titan Robot Arm Alpha",
-        "code": "ROB-4011",
-        "type": "6-Axis Heavy Payload Manipulator",
-        "manufacturer": "KUKA",
-        "line": "Line 1 - Body Stamping",
-        "status": "Running",
-        "oee": 89.2,
-        "availability": 94.5,
-        "performance": 96.1,
-        "quality": 98.0,
-        "temperature": 64.2,
-        "vibration": 2.1,
-        "rul_hours": 420.0,
-        "health_score": 92.0,
-        "last_maintenance": datetime.now(),
-        "created_at": datetime.now(),
-        "updated_at": datetime.now(),
-    },
-    {
-        "id": uuid4(),
-        "plant_id": uuid4(),
-        "name": "DMG MORI 5-Axis CNC Mill X5",
-        "code": "CNC-5012",
-        "type": "High-Precision CNC Workcenter",
-        "manufacturer": "DMG MORI",
-        "line": "Line 4 - Gearbox Machining",
-        "status": "Down",
-        "oee": 45.0,
-        "availability": 50.0,
-        "performance": 92.0,
-        "quality": 97.8,
-        "temperature": 84.1,
-        "vibration": 8.9,
-        "rul_hours": 0.0,
-        "health_score": 32.0,
-        "last_maintenance": datetime.now(),
-        "created_at": datetime.now(),
-        "updated_at": datetime.now(),
-    },
-]
 
 @router.get("/", response_model=List[MachineOut])
-async def list_machines(skip: int = 0, limit: int = Query(10, le=100)):
-    return MOCK_MACHINES_RESP[skip : skip + limit]
+async def list_machines(
+    skip: int = 0,
+    limit: int = Query(10, le=100),
+    status_filter: str | None = Query(None, alias="status"),
+    db: AsyncSession = Depends(get_db_session),
+):
+    query = select(Machine)
+    if status_filter:
+        query = query.where(Machine.status == status_filter)
+    result = await db.execute(query.offset(skip).limit(limit))
+    return result.scalars().all()
+
+
+@router.post("/", response_model=MachineOut, status_code=status.HTTP_201_CREATED)
+async def create_machine(
+    payload: MachineCreate,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    machine = Machine(**payload.model_dump())
+    db.add(machine)
+    await db.commit()
+    await db.refresh(machine)
+    return machine
+
 
 @router.get("/{machine_id}", response_model=MachineOut)
-async def get_machine(machine_id: str):
-    return MOCK_MACHINES_RESP[0]
+async def get_machine(
+    machine_id: UUID,
+    db: AsyncSession = Depends(get_db_session),
+):
+    result = await db.execute(select(Machine).where(Machine.id == str(machine_id)))
+    machine = result.scalars().first()
+    if not machine:
+        raise HTTPException(status_code=404, detail="Machine not found")
+    return machine
+
+
+@router.patch("/{machine_id}", response_model=MachineOut)
+async def update_machine(
+    machine_id: UUID,
+    payload: MachineUpdate,
+    db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    result = await db.execute(select(Machine).where(Machine.id == str(machine_id)))
+    machine = result.scalars().first()
+    if not machine:
+        raise HTTPException(status_code=404, detail="Machine not found")
+    for field, value in payload.model_dump(exclude_unset=True).items():
+        setattr(machine, field, value)
+    await db.commit()
+    await db.refresh(machine)
+    return machine

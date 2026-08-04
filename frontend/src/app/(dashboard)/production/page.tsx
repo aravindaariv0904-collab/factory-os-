@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { MOCK_PRODUCTION_ORDERS, MOCK_DOWNTIME_EVENTS } from "@/mock";
+import { ProductionService } from "@/services";
+import { useApiData } from "@/hooks/useApiData";
 import { ProductionOrder } from "@/types";
 import {
   Cpu,
@@ -37,6 +39,16 @@ const utilizationData = [
 ];
 
 export default function ProductionPage() {
+  const { data: orders } = useApiData(ProductionService.getProductionOrders, MOCK_PRODUCTION_ORDERS);
+  const { data: downtimes } = useApiData(ProductionService.getDowntimeEvents, MOCK_DOWNTIME_EVENTS);
+
+  const activeWorkOrders = orders.filter((o) => o.status === "In Progress").length;
+  const totalProduced = orders.reduce((sum, o) => sum + o.producedQuantity, 0);
+  const downtimeCost = downtimes.reduce((sum, d) => sum + d.impactCost, 0);
+  const avgUtilization = orders.length
+    ? Math.round(orders.reduce((sum, o) => sum + o.oee, 0) / orders.length)
+    : 84.9;
+
   const columns: Column<ProductionOrder>[] = [
     {
       header: "Order #",
@@ -136,10 +148,10 @@ export default function ProductionPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Active Work Orders" value="12" subtitle="4 lines running" icon={<Clock className="w-5 h-5" />} statusColor="cyan" />
-        <StatCard title="Shift Produced Units" value="5,800" trend={+4.5} icon={<CheckCircle2 className="w-5 h-5" />} statusColor="emerald" />
-        <StatCard title="Machine Utilization" value="84.9%" trend={-1.2} icon={<Cpu className="w-5 h-5" />} statusColor="amber" />
-        <StatCard title="Line Downtime Cost" value="$25,600" subtitle="2 active incidents" icon={<AlertTriangle className="w-5 h-5" />} statusColor="rose" />
+        <StatCard title="Active Work Orders" value={String(activeWorkOrders)} subtitle={`${downtimes.length} recorded incidents`} icon={<Clock className="w-5 h-5" />} statusColor="cyan" />
+        <StatCard title="Shift Produced Units" value={totalProduced.toLocaleString()} trend={+4.5} icon={<CheckCircle2 className="w-5 h-5" />} statusColor="emerald" />
+        <StatCard title="Machine Utilization" value={`${avgUtilization}%`} trend={-1.2} icon={<Cpu className="w-5 h-5" />} statusColor="amber" />
+        <StatCard title="Line Downtime Cost" value={`$${downtimeCost.toLocaleString()}`} subtitle={`${downtimes.filter((d) => d.status !== "Resolved").length} active incidents`} icon={<AlertTriangle className="w-5 h-5" />} statusColor="rose" />
       </div>
 
       {/* Utilization Chart & Downtime Feed */}
@@ -176,7 +188,7 @@ export default function ProductionPage() {
             <span className="text-[10px] text-slate-400">Shift 1 Log</span>
           </CardHeader>
           <div className="space-y-3 mt-2">
-            {MOCK_DOWNTIME_EVENTS.map((dt) => (
+            {downtimes.map((dt) => (
               <div key={dt.id} className="p-3 rounded-lg border border-slate-800 bg-slate-950/60 text-xs">
                 <div className="flex items-center justify-between font-semibold text-slate-200">
                   <span className="truncate">{dt.machineName}</span>
@@ -196,7 +208,7 @@ export default function ProductionPage() {
       {/* Production Order Table */}
       <DataTable
         title="Active Shift Work Orders"
-        data={MOCK_PRODUCTION_ORDERS}
+        data={orders}
         columns={columns}
         searchPlaceholder="Filter by order #, product name, or line..."
         searchKey={(row) => `${row.orderNumber} ${row.productName} ${row.line}`}

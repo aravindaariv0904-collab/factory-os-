@@ -21,5 +21,5 @@ def test_v5_0_production_health_check():
     resp = client.get("/health")
     assert resp.status_code == 200
     data = resp.json()
-    assert data["version"] == "5.0.0"
+    assert data["version"] == "6.0.0"
     assert data["status"] == "healthy"

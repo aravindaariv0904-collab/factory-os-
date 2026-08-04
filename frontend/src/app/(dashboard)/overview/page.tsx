@@ -9,9 +9,9 @@ import { useAppStore } from "@/store/useAppStore";
 import {
   MOCK_MACHINES,
   MOCK_RECOMMENDATIONS,
-  MOCK_ALERTS,
-  MOCK_DOWNTIME_EVENTS,
 } from "@/mock";
+import { ProductionService, MaintenanceService, AnalyticsService } from "@/services";
+import { useApiData } from "@/hooks/useApiData";
 import {
   Cpu,
   Zap,
@@ -54,6 +54,14 @@ const downtimePareto = [
 
 export default function OverviewPage() {
   const { activeFactory } = useAppStore();
+  const { data: machines } = useApiData(ProductionService.getMachines, MOCK_MACHINES);
+  const { data: recommendations } = useApiData(MaintenanceService.getRecommendations, MOCK_RECOMMENDATIONS);
+  const { data: oee } = useApiData(AnalyticsService.getOEE, {
+    overall_oee: 87.4,
+    availability: 94.5,
+    performance: 96.1,
+    quality: 98.4,
+  });
 
   return (
     <div className="space-y-6">
@@ -87,28 +95,28 @@ export default function OverviewPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Overall OEE"
-          value="87.4%"
+          value={`${oee?.overall_oee?.toFixed(1) ?? "87.4"}%`}
           trend={+3.2}
           icon={<Activity className="w-5 h-5" />}
           statusColor="cyan"
         />
         <StatCard
           title="Line Availability"
-          value="94.5%"
+          value={`${oee?.availability?.toFixed(1) ?? "94.5"}%`}
           trend={+1.8}
           icon={<CheckCircle2 className="w-5 h-5" />}
           statusColor="emerald"
         />
         <StatCard
           title="Performance Efficiency"
-          value="96.1%"
+          value={`${oee?.performance?.toFixed(1) ?? "96.1"}%`}
           trend={-0.4}
           icon={<Cpu className="w-5 h-5" />}
           statusColor="amber"
         />
         <StatCard
           title="First Pass Yield"
-          value="98.4%"
+          value={`${oee?.quality?.toFixed(1) ?? "98.4"}%`}
           trend={+0.9}
           icon={<Sparkles className="w-5 h-5" />}
           statusColor="blue"
@@ -204,7 +212,7 @@ export default function OverviewPage() {
           </CardHeader>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-2">
-            {MOCK_MACHINES.slice(0, 4).map((machine) => (
+            {machines.slice(0, 4).map((machine) => (
               <div
                 key={machine.id}
                 className="p-3.5 rounded-xl border border-slate-800 bg-slate-950/60 hover:border-slate-700 transition-colors flex flex-col justify-between"
@@ -258,7 +266,7 @@ export default function OverviewPage() {
           </CardHeader>
 
           <div className="space-y-3 mt-2">
-            {MOCK_RECOMMENDATIONS.slice(0, 2).map((rec) => (
+            {recommendations.slice(0, 2).map((rec) => (
               <div
                 key={rec.id}
                 className="p-3 rounded-lg border border-slate-800 bg-slate-950/80 space-y-2"

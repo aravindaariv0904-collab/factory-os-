@@ -5,6 +5,7 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { MOCK_COPILOT_CONVERSATION } from "@/mock";
+import { CopilotService } from "@/services";
 import { CopilotMessage } from "@/types";
 import {
   Bot,
@@ -36,17 +37,21 @@ const SUGGESTED_PROMPTS = [
   "Generate Shift A Executive Summary Report",
 ];
 
+function generateMessageId(prefix: "usr" | "ai"): string {
+  return `${prefix}_${Date.now()}`;
+}
+
 export default function CopilotPage() {
   const [messages, setMessages] = useState<CopilotMessage[]>(MOCK_COPILOT_CONVERSATION);
   const [inputQuery, setInputQuery] = useState("");
   const [isTyping, setIsTyping] = useState(false);
 
-  const handleSend = (queryText?: string) => {
+  const handleSend = async (queryText?: string) => {
     const textToSend = queryText || inputQuery;
-    if (!textToSend.trim()) return;
+    if (!textToSend.trim() || isTyping) return;
 
     const userMsg: CopilotMessage = {
-      id: `usr_${Date.now()}`,
+      id: generateMessageId("usr"),
       sender: "user",
       content: textToSend,
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
@@ -56,42 +61,9 @@ export default function CopilotPage() {
     setInputQuery("");
     setIsTyping(true);
 
-    // Simulate AI response with evidence card
-    setTimeout(() => {
-      const aiMsg: CopilotMessage = {
-        id: `ai_${Date.now()}`,
-        sender: "assistant",
-        content: `### LangGraph Decision Engine Analysis\nIn response to your query regarding **"${textToSend}"**:\n\n1. **Diagnostic Findings**: Real-time multi-variate telemetry correlation confirms a **96.4% statistical confidence** match with historical bearing wear patterns.\n2. **Financial Quantification**: Proactive intervention will prevent an estimated **$34,500** in scrap and unplanned line stoppage.\n3. **Recommended Prescriptive Protocol**: Execute Work Order #WO-9012 within the next 4 hours.`,
-        timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        evidence: {
-          confidence: 0.96,
-          sources: [
-            "LangGraph Agent Node v2.4",
-            "IoT High-Frequency Vibration Telemetry",
-            "SAP Enterprise Maintenance History",
-          ],
-          metrics: [
-            { label: "Confidence", value: "96.4%", trend: "High" },
-            { label: "Est. Savings", value: "$34,500", trend: "Saved" },
-            { label: "Risk Mitigation", value: "Optimal", trend: "Passed" },
-          ],
-          chartData: [
-            { name: "08:00", value: 94 },
-            { name: "10:00", value: 92 },
-            { name: "12:00", value: 85 },
-            { name: "14:00", value: 72 },
-            { name: "16:00", value: 96 },
-          ],
-          recommendations: [
-            "Dispatch Maintenance Crew #1 to inspect spindle housing",
-            "Verify lubrication pressure on Hydraulic Cylinder B",
-          ],
-        },
-      };
-
-      setMessages((prev) => [...prev, aiMsg]);
-      setIsTyping(false);
-    }, 1200);
+    const aiMsg = await CopilotService.queryCopilot(textToSend);
+    setMessages((prev) => [...prev, aiMsg]);
+    setIsTyping(false);
   };
 
   return (

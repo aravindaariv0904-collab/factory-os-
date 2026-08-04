@@ -7,10 +7,31 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { MOCK_INVENTORY } from "@/mock";
+import { InventoryService } from "@/services";
+import { useApiData } from "@/hooks/useApiData";
 import { InventoryItem } from "@/types";
 import { Package, AlertTriangle, Truck, DollarSign, ShoppingCart } from "lucide-react";
 
 export default function InventoryPage() {
+  const { data: inventory, setData: setInventory } = useApiData(
+    InventoryService.getStock,
+    MOCK_INVENTORY
+  );
+
+  const handleReorder = async (row: InventoryItem) => {
+    const res = await InventoryService.reorderItem(row.sku, Math.max(row.minThreshold * 2, 500));
+    if (res) {
+      setInventory(
+        inventory.map((i) =>
+          i.sku === row.sku
+            ? { ...i, status: "Optimal", quantity: Math.max(i.minThreshold * 2, 500) }
+            : i
+        )
+      );
+      alert(`Purchase Order initiated for ${row.sku} (${row.supplier})`);
+    }
+  };
+
   const columns: Column<InventoryItem>[] = [
     {
       header: "SKU / Item Name",
@@ -91,7 +112,7 @@ export default function InventoryPage() {
         <Button
           variant={row.status !== "Optimal" ? "cyan" : "outline"}
           size="sm"
-          onClick={() => alert(`Purchase Order initiated for ${row.sku} (${row.supplier})`)}
+          onClick={() => handleReorder(row)}
         >
           <ShoppingCart className="w-3 h-3 mr-1 inline" /> Reorder
         </Button>
@@ -119,8 +140,8 @@ export default function InventoryPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Valuation" value="$4.82M" trend={+2.1} icon={<DollarSign className="w-5 h-5" />} statusColor="emerald" />
-        <StatCard title="Low Stock Alerts" value="2 Items" subtitle="Requires immediate reorder" icon={<AlertTriangle className="w-5 h-5" />} statusColor="rose" />
+        <StatCard title="Total Valuation" value={`$${(inventory.reduce((s, i) => s + i.quantity * i.unitCost, 0) / 1e6).toFixed(2)}M`} trend={+2.1} icon={<DollarSign className="w-5 h-5" />} statusColor="emerald" />
+        <StatCard title="Low Stock Alerts" value={`${inventory.filter((i) => i.quantity < i.minThreshold).length} Items`} subtitle="Requires immediate reorder" icon={<AlertTriangle className="w-5 h-5" />} statusColor="rose" />
         <StatCard title="Active Supplier POs" value="14 Shipments" subtitle="Avg lead time: 4.8d" icon={<Truck className="w-5 h-5" />} statusColor="cyan" />
         <StatCard title="Warehouse Utilization" value="78.4%" subtitle="Bay A-D active" icon={<Package className="w-5 h-5" />} statusColor="blue" />
       </div>
@@ -128,7 +149,7 @@ export default function InventoryPage() {
       {/* Stock Data Table */}
       <DataTable
         title="Plant Inventory Roster"
-        data={MOCK_INVENTORY}
+        data={inventory}
         columns={columns}
         searchPlaceholder="Search materials, SKUs, suppliers, or locations..."
         searchKey={(row) => `${row.name} ${row.sku} ${row.category} ${row.supplier}`}

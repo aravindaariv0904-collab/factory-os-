@@ -10,7 +10,7 @@ COPY backend/requirements.txt /app/backend/requirements.txt
 RUN pip install --no-cache-dir -r backend/requirements.txt
 
 COPY backend /app/backend
-COPY ai-service /app/ai_service
+COPY ai_service /app/ai_service
 COPY scripts /app/scripts
 COPY models /app/models
 

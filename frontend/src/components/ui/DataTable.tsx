@@ -11,6 +11,10 @@ export interface Column<T> {
   sortableKey?: keyof T;
 }
 
+function buildExportFilenameTimestamp(): number {
+  return Date.now();
+}
+
 interface DataTableProps<T> {
   data: T[];
   columns: Column<T>[];
@@ -52,7 +56,7 @@ export function DataTable<T extends { id: string | number }>({
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `factory_os_export_${Date.now()}.csv`);
+    link.setAttribute("download", `factory_os_export_${buildExportFilenameTimestamp()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

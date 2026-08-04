@@ -6,10 +6,21 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { MOCK_REPORTS } from "@/mock";
+import { ReportService } from "@/services";
+import { useApiData } from "@/hooks/useApiData";
 import { FileText, Download, Plus, Clock, CheckCircle2 } from "lucide-react";
 
 export default function ReportsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const { data: reports, setData: setReports } = useApiData(ReportService.getReports, MOCK_REPORTS);
+  const [category, setCategory] = useState("Shift Daily Operations Digest");
+  const [format, setFormat] = useState("PDF");
+
+  const handleGenerate = async () => {
+    const newReport = await ReportService.generateReport(category, format);
+    setReports([newReport, ...reports]);
+    setIsModalOpen(false);
+  };
 
   return (
     <div className="space-y-6">
@@ -29,7 +40,7 @@ export default function ReportsPage() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {MOCK_REPORTS.map((rep) => (
+        {reports.map((rep) => (
           <Card key={rep.id} className="flex flex-col justify-between">
             <div>
               <div className="flex items-center justify-between mb-2">
@@ -68,10 +79,7 @@ export default function ReportsPage() {
             <Button
               variant="cyan"
               size="sm"
-              onClick={() => {
-                setIsModalOpen(false);
-                alert("Report compilation queued!");
-              }}
+              onClick={handleGenerate}
             >
               Start Report Compilation
             </Button>
@@ -81,7 +89,11 @@ export default function ReportsPage() {
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Report Category</label>
-            <select className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200">
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200"
+            >
               <option>Shift Daily Operations Digest</option>
               <option>Weekly OEE & Asset Reliability Brief</option>
               <option>Unplanned Downtime Pareto Audit</option>
@@ -90,10 +102,14 @@ export default function ReportsPage() {
           </div>
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Output Format</label>
-            <select className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200">
-              <option>PDF (Executive Presentation)</option>
-              <option>XLSX (Raw Telemetry Spreadsheet)</option>
-              <option>JSON (API Export)</option>
+            <select
+              value={format}
+              onChange={(e) => setFormat(e.target.value)}
+              className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200"
+            >
+              <option>PDF</option>
+              <option>XLSX</option>
+              <option>JSON</option>
             </select>
           </div>
         </div>

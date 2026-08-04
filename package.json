@@ -8,9 +8,9 @@
     "dev:ai": "python -m uvicorn ai_service.app.main:app --reload --host 0.0.0.0 --port 8001",
     "dev:frontend": "cd frontend && npm run dev",
     "init": "python scripts/init_models.py && python scripts/seed_database.py",
-    "test": "python -m pytest backend/tests ai-service/tests -v",
+    "test": "python -m pytest backend/tests ai_service/tests -v",
     "test:backend": "python -m pytest backend/tests -v",
-    "test:ai": "python -m pytest ai-service/tests -v",
+    "test:ai": "python -m pytest ai_service/tests -v",
     "docker:up": "docker compose up --build",
     "docker:down": "docker compose down",
     "lint:frontend": "cd frontend && npm run lint"

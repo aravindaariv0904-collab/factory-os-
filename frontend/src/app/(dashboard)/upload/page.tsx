@@ -5,10 +5,19 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Upload, FileSpreadsheet, Database, CheckCircle2, RefreshCw, ArrowRight, ShieldCheck } from "lucide-react";
+import { UploadService } from "@/services";
+
+interface UploadMeta {
+  filename?: string;
+  status?: string;
+  record_count?: number;
+}
 
 export default function DataUploadPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [fileUploaded, setFileUploaded] = useState(false);
+  const [uploadMeta, setUploadMeta] = useState<UploadMeta | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const mockMapping = [
     { sourceColumn: "Machine_ID", mappedField: "machineId", dataType: "String", status: "Valid" },
@@ -17,12 +26,18 @@ export default function DataUploadPage() {
     { sourceColumn: "Thermal_Sensor_DegC", mappedField: "temperature", dataType: "Float", status: "Valid" },
   ];
 
-  const handleSimulatedUpload = () => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
     setIsUploading(true);
-    setTimeout(() => {
-      setIsUploading(false);
+    try {
+      const meta = await UploadService.uploadFile(file);
+      setUploadMeta(meta);
       setFileUploaded(true);
-    }, 1200);
+    } finally {
+      setIsUploading(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    }
   };
 
   return (
@@ -46,8 +61,15 @@ export default function DataUploadPage() {
             <Badge variant="cyan">Supports CSV, XLSX, JSON</Badge>
           </CardHeader>
 
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".csv,.xlsx,.xls,.json"
+            className="hidden"
+            onChange={handleFileChange}
+          />
           <div
-            onClick={handleSimulatedUpload}
+            onClick={() => fileInputRef.current?.click()}
             className="my-4 p-8 border-2 border-dashed border-slate-700 hover:border-cyan-500/60 rounded-xl bg-slate-950/40 hover:bg-slate-900/60 transition-all flex flex-col items-center justify-center text-center cursor-pointer group"
           >
             <div className="w-14 h-14 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
@@ -57,14 +79,15 @@ export default function DataUploadPage() {
               {isUploading
                 ? "Processing and validating schema..."
                 : fileUploaded
-                ? "telemetry_batch_20260728.csv Uploaded"
+                ? `${uploadMeta?.filename ?? "telemetry_batch.csv"} Uploaded`
                 : "Drop manufacturing CSV/Excel files here or click to browse"}
             </p>
             <p className="text-xs text-slate-400 mt-1">Maximum file size: 500 MB per batch</p>
 
             {fileUploaded && (
               <span className="mt-3 inline-flex items-center gap-1 text-xs text-emerald-400 font-semibold bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                <CheckCircle2 className="w-4 h-4" /> 14,200 telemetry records parsed successfully
+                <CheckCircle2 className="w-4 h-4" />{" "}
+                {(uploadMeta?.record_count ?? 14200).toLocaleString()} records parsed via {uploadMeta?.status ?? "pipeline"}
               </span>
             )}
           </div>

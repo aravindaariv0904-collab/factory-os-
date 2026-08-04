@@ -7,6 +7,8 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Modal } from "@/components/ui/Modal";
 import { MOCK_MACHINES } from "@/mock";
+import { ProductionService, MaintenanceService } from "@/services";
+import { useApiData } from "@/hooks/useApiData";
 import { Machine } from "@/types";
 import {
   Wrench,
@@ -39,8 +41,28 @@ const rulDegradationCurve = [
 ];
 
 export default function MaintenancePage() {
+  const { data: machines } = useApiData(ProductionService.getMachines, MOCK_MACHINES);
   const [selectedMachine, setSelectedMachine] = useState<Machine | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [priority, setPriority] = useState("High Priority (Expedited Repair)");
+  const [description, setDescription] = useState("");
+  const [isDispatching, setIsDispatching] = useState(false);
+
+  const handleDispatch = async () => {
+    if (!selectedMachine) return;
+    setIsDispatching(true);
+    try {
+      await MaintenanceService.scheduleWorkOrder(
+        selectedMachine.id,
+        priority,
+        description || `Preventative maintenance for ${selectedMachine.code}`
+      );
+      alert(`Work order dispatched for ${selectedMachine.name} to Maintenance Crew #2!`);
+    } finally {
+      setIsDispatching(false);
+      setIsModalOpen(false);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -67,8 +89,8 @@ export default function MaintenancePage() {
 
       {/* Health Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Overall Fleet Health" value="88.2 / 100" trend={+1.4} icon={<Activity className="w-5 h-5" />} statusColor="emerald" />
-        <StatCard title="Critical RUL Warnings" value="2 Machines" subtitle="&lt; 48h useful life" icon={<AlertTriangle className="w-5 h-5" />} statusColor="rose" />
+        <StatCard title="Overall Fleet Health" value={`${Math.round(machines.reduce((s, m) => s + m.healthScore, 0) / Math.max(1, machines.length))} / 100`} trend={+1.4} icon={<Activity className="w-5 h-5" />} statusColor="emerald" />
+        <StatCard title="Critical RUL Warnings" value={`${machines.filter((m) => m.rulHours < 48).length} Machines`} subtitle="&lt; 48h useful life" icon={<AlertTriangle className="w-5 h-5" />} statusColor="rose" />
         <StatCard title="Mean Time Between Failures" value="482 hrs" trend={+5.2} icon={<Clock className="w-5 h-5" />} statusColor="cyan" />
         <StatCard title="Scheduled Work Orders" value="6 Active" subtitle="3 maintenance crews" icon={<Wrench className="w-5 h-5" />} statusColor="blue" />
       </div>
@@ -80,7 +102,7 @@ export default function MaintenancePage() {
           Asset Reliability & RUL Prognostics
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {MOCK_MACHINES.map((machine) => (
+          {machines.map((machine) => (
             <Card key={machine.id} className="flex flex-col justify-between">
               <div>
                 <div className="flex items-start justify-between">
@@ -244,12 +266,10 @@ export default function MaintenancePage() {
             <Button
               variant="cyan"
               size="sm"
-              onClick={() => {
-                setIsModalOpen(false);
-                alert("Work order generated and assigned to Maintenance Crew #2!");
-              }}
+              disabled={isDispatching}
+              onClick={handleDispatch}
             >
-              Confirm Dispatch
+              {isDispatching ? "Dispatching..." : "Confirm Dispatch"}
             </Button>
           </>
         }
@@ -257,7 +277,11 @@ export default function MaintenancePage() {
         <div className="space-y-3">
           <div>
             <label className="block text-xs font-semibold text-slate-300 mb-1">Priority Level</label>
-            <select className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200">
+            <select
+              value={priority}
+              onChange={(e) => setPriority(e.target.value)}
+              className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-xs text-slate-200"
+            >
               <option>High Priority (Expedited Repair)</option>
               <option>Medium Priority (Scheduled Shift Maintenance)</option>
               <option>Routine Inspection</option>
@@ -267,7 +291,9 @@ export default function MaintenancePage() {
             <label className="block text-xs font-semibold text-slate-300 mb-1">Work Order Description</label>
             <textarea
               rows={3}
-              defaultValue={
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder={
                 selectedMachine
                   ? `Perform preventative replacement of ceramic bearings on ${selectedMachine.code}. Check hydraulic fluid pressure lines.`
                   : "Routine overhaul and calibration."

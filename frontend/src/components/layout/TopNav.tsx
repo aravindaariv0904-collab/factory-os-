@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { useAppStore } from "@/store/useAppStore";
 import {
   Bell,
@@ -30,7 +30,12 @@ export function TopNav() {
     setCommandPaletteOpen,
     alerts,
     currentUser,
+    init,
   } = useAppStore();
+
+  useEffect(() => {
+    init();
+  }, [init]);
 
   const [isFactoryMenuOpen, setIsFactoryMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);

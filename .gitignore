@@ -5,6 +5,15 @@ node_modules/
 
 # testing
 /coverage
+.pytest_cache/
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+.venv/
+venv/
 
 # next.js
 frontend/.next/
@@ -13,6 +22,10 @@ frontend/out/
 # production
 frontend/build/
 frontend/dist/
+
+# databases & generated models
+*.db
+/models/
 
 # misc
 .DS_Store

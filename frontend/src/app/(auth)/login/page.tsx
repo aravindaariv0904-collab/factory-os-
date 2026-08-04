@@ -5,19 +5,30 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Sparkles, ArrowRight, ShieldCheck, Lock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+import { AuthService } from "@/services";
+import { useAppStore } from "@/store/useAppStore";
 
 export default function LoginPage() {
   const router = useRouter();
+  const init = useAppStore((s) => s.init);
   const [email, setEmail] = useState("alexander.vance@factoryos.ai");
   const [password, setPassword] = useState("••••••••••••");
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
+    setError(null);
+    try {
+      await AuthService.login(email.trim(), password);
+      await init();
       router.push("/overview");
-    }, 600);
+    } catch {
+      setError("Authentication failed. Check your credentials and try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -87,6 +98,9 @@ export default function LoginPage() {
           >
             {isLoading ? "Authenticating..." : "Sign In to Platform"}
           </Button>
+          {error && (
+            <p className="text-xs text-red-400 text-center mt-2">{error}</p>
+          )}
         </form>
 
         {/* SSO Footer */}

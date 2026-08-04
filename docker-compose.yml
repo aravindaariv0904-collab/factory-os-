@@ -62,7 +62,7 @@ services:
   ai-service:
     build:
       context: .
-      dockerfile: ai-service/Dockerfile
+      dockerfile: ai_service/Dockerfile
     ports:
       - "8001:8001"
     environment:
@@ -74,7 +74,7 @@ services:
       LOG_LEVEL: INFO
     volumes:
       - ./models:/app/models
-      - ./ai-service:/app/ai_service
+      - ./ai_service:/app/ai_service
     depends_on:
       postgres:
         condition: service_healthy

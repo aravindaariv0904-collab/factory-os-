@@ -6,6 +6,8 @@ import { StatCard } from "@/components/ui/StatCard";
 import { Badge } from "@/components/ui/Badge";
 import { DataTable, Column } from "@/components/ui/DataTable";
 import { MOCK_DEFECTS } from "@/mock";
+import { QualityService } from "@/services";
+import { useApiData } from "@/hooks/useApiData";
 import { DefectLog } from "@/types";
 import { ShieldCheck, AlertTriangle, Sparkles, CheckCircle2, Scan } from "lucide-react";
 import {
@@ -25,6 +27,13 @@ const defectCategoryData = [
 ];
 
 export default function QualityPage() {
+  const { data: defects } = useApiData(QualityService.getDefects, MOCK_DEFECTS);
+  const { data: yieldStats } = useApiData(QualityService.getYieldStats, {
+    passYield: 98.4,
+    scrapRate: 1.6,
+    totalInspected: 45200,
+  });
+
   const columns: Column<DefectLog>[] = [
     {
       header: "Log ID / Batch",
@@ -97,9 +106,9 @@ export default function QualityPage() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="First Pass Yield (FPY)" value="98.4%" trend={+0.8} icon={<CheckCircle2 className="w-5 h-5" />} statusColor="emerald" />
-        <StatCard title="Scrap Rate" value="1.6%" trend={-0.3} icon={<AlertTriangle className="w-5 h-5" />} statusColor="rose" />
-        <StatCard title="Total Units Inspected" value="45,200" subtitle="Shift 1 & 2" icon={<Scan className="w-5 h-5" />} statusColor="cyan" />
+        <StatCard title="First Pass Yield (FPY)" value={`${yieldStats.passYield}%`} trend={+0.8} icon={<CheckCircle2 className="w-5 h-5" />} statusColor="emerald" />
+        <StatCard title="Scrap Rate" value={`${yieldStats.scrapRate}%`} trend={-0.3} icon={<AlertTriangle className="w-5 h-5" />} statusColor="rose" />
+        <StatCard title="Total Units Inspected" value={yieldStats.totalInspected.toLocaleString()} subtitle="Shift 1 & 2" icon={<Scan className="w-5 h-5" />} statusColor="cyan" />
         <StatCard title="AI Vision Precision" value="99.8%" subtitle="Sub-millimeter camera" icon={<Sparkles className="w-5 h-5" />} statusColor="blue" />
       </div>
 
@@ -166,7 +175,7 @@ export default function QualityPage() {
       {/* Inspection Log Table */}
       <DataTable
         title="Inspection Log History"
-        data={MOCK_DEFECTS}
+        data={defects}
         columns={columns}
         searchPlaceholder="Filter defects by batch, inspection system, or machine..."
         searchKey={(row) => `${row.id} ${row.batchId} ${row.defectType} ${row.machineName}`}
