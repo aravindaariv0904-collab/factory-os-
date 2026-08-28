@@ -6,7 +6,7 @@
 
 The append-only artifact registry records `dataset_id`, version, SHA-256 file hash, source, owner, organization ID, upload time, row/column counts, schema fingerprint/version, parent dataset ID, processing and quality states. Raw bytes are retained unchanged. Profiling and mappings are derived metadata; raw values are never cleaned in place.
 
-Mappings whose confidence is below `0.80` are returned but not accepted. Quality states are `READY`, `REVIEW_REQUIRED`, `DEGRADED`, and `BLOCKED`. `BLOCKED` never trains; `REVIEW_REQUIRED` requires an explicit `allow_review=True` caller approval. Outcome-like fields (`DefectRate`, `QualityScore`, defect category, outcomes/results) are excluded as potential leakage. This is a heuristic warning, not a causal claim.
+Mappings whose confidence is below `0.80` are returned but not accepted. Each mapping records its method and reason (`exact_alias`, `alias_containment`, `token_overlap`, or `unmapped`). Quality states are `READY`, `REVIEW_REQUIRED`, `DEGRADED`, and `BLOCKED`. `BLOCKED` never trains; `REVIEW_REQUIRED` requires an explicit `allow_review=True` caller approval. `DataQualityEngine.score` exposes explainable completeness, uniqueness, numeric-range, mapping-confidence, and schema-integrity dimensions; it is informational and cannot override the quality gate. Outcome-like fields (`DefectRate`, `QualityScore`, defect category, outcomes/results) are excluded as potential leakage. This is a heuristic warning, not a causal claim.
 
 ## Training and inference contract
 
