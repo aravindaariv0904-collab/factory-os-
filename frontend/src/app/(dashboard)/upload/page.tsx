@@ -4,9 +4,7 @@ import React, { useState } from "react";
 import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
-import { Modal } from "@/components/ui/Modal";
 import {
-  Upload,
   FileSpreadsheet,
   Database,
   CheckCircle2,
@@ -14,11 +12,7 @@ import {
   ArrowRight,
   ShieldCheck,
   Cpu,
-  BarChart3,
-  TrendingUp,
-  Activity,
   Layers,
-  FileText,
   Download,
   ChevronRight,
   Check,
@@ -75,9 +69,9 @@ export default function DataUploadPage() {
   const [filename, setFilename] = useState("manufacturing_defect_dataset.csv");
   const [recordCount, setRecordCount] = useState(14200);
   const [targetTask, setTargetTask] = useState("Defect Classification (Multi-Class: TWF, HDF, PWF, OSF)");
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
-  const [actionApproved, setActionApproved] = useState(false);
+  const [, setActionApproved] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -158,15 +152,19 @@ export default function DataUploadPage() {
       <div>
         <h1 className="text-xl font-bold text-slate-100 tracking-tight flex items-center gap-2">
           <Layers className="w-5 h-5 text-cyan-400" />
-          Adaptive Data-to-ML Operational Workflow
+          Data Management Workspace
         </h1>
         <p className="text-xs text-slate-400">
-          Upload telemetry datasets, inspect distributions, review safety warnings, train models, inspect SHAP predictions, and approve MES actions
+          Upload telemetry datasets, inspect profiles, review schema mappings, validate data quality, and inspect lineage for ActiveDataContext.
         </p>
       </div>
 
-      {/* Step Stepper Progress Bar */}
+      {/* Compact Data Pipeline Status Header */}
       <div className="p-3 rounded-xl border border-slate-800 bg-slate-950/60 overflow-x-auto">
+        <div className="flex items-center justify-between min-w-max text-xs mb-2">
+          <span className="font-bold text-slate-300 uppercase tracking-wider text-[10px]">Data Pipeline Readiness Status</span>
+          <span className="text-[10px] text-cyan-400 font-medium">Data Management Foundation</span>
+        </div>
         <div className="flex items-center gap-1.5 min-w-max text-xs">
           {STEPS.map((step, idx) => {
             const isActive = currentStep === step.id;
