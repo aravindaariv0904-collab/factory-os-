@@ -47,6 +47,7 @@ export default function MaintenancePage() {
   const [priority, setPriority] = useState("High Priority (Expedited Repair)");
   const [description, setDescription] = useState("");
   const [isDispatching, setIsDispatching] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const handleDispatch = async () => {
     if (!selectedMachine) return;
@@ -57,7 +58,8 @@ export default function MaintenancePage() {
         priority,
         description || `Preventative maintenance for ${selectedMachine.code}`
       );
-      alert(`Work order dispatched for ${selectedMachine.name} to Maintenance Crew #2!`);
+      setNotice(`Work order successfully dispatched for ${selectedMachine.name} to Maintenance Crew #2!`);
+      setTimeout(() => setNotice(null), 4000);
     } finally {
       setIsDispatching(false);
       setIsModalOpen(false);
@@ -66,6 +68,13 @@ export default function MaintenancePage() {
 
   return (
     <div className="space-y-6">
+      {notice && (
+        <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-950/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{notice}</span>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

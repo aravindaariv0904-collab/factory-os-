@@ -22,6 +22,19 @@ export default function ReportsPage() {
     setIsModalOpen(false);
   };
 
+  const handleDownload = (rep: { title: string; format: string; type: string }) => {
+    const content = `FACTORY OS ENTERPRISE INTELLIGENCE REPORT\n=========================================\nTitle: ${rep.title}\nCategory: ${rep.type}\nGenerated: ${new Date().toISOString()}\nFormat: ${rep.format}\nStatus: Certified\n\nExecutive Metrics Summary:\n- Overall Plant OEE: 87.4%\n- First Pass Yield: 98.4%\n- Machine Availability: 94.5%\n- Active Incident Count: 1 (Investigating)\n\nCertified by Factory OS AI Decision Engine.`;
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${rep.title.toLowerCase().replace(/[^a-z0-9]/g, "_")}.${rep.format.toLowerCase() === "pdf" ? "txt" : rep.format.toLowerCase()}`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -58,7 +71,7 @@ export default function ReportsPage() {
                 variant="outline"
                 size="sm"
                 icon={<Download className="w-3 h-3" />}
-                onClick={() => alert(`Downloading ${rep.title}`)}
+                onClick={() => handleDownload(rep)}
               >
                 Download
               </Button>

@@ -5,14 +5,46 @@ import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { useAppStore } from "@/store/useAppStore";
-import { Settings, Building2, Users, Bell, Key, Sparkles, CheckCircle2 } from "lucide-react";
+import { Settings, Building2, Users, Bell, Key, CheckCircle2 } from "lucide-react";
 
 export default function SettingsPage() {
   const { currentUser, factories } = useAppStore();
   const [activeTab, setActiveTab] = useState("organization");
+  const [apiKey, setApiKey] = useState("fos_live_key_992014810941829048120");
+  const [notice, setNotice] = useState<string | null>(null);
+  const [orgName, setOrgName] = useState("Apex Global Manufacturing Inc.");
+  const [industry, setIndustry] = useState("Automotive EV & Aerospace Components");
+  const [notifSettings, setNotifSettings] = useState({
+    emailAlerts: true,
+    smsCritical: true,
+    slackWebhook: false,
+  });
+
+  const showNotice = (msg: string) => {
+    setNotice(msg);
+    setTimeout(() => setNotice(null), 4000);
+  };
+
+  const handleSaveOrg = (e: React.FormEvent) => {
+    e.preventDefault();
+    showNotice("Organization profile & telemetry topology updated successfully.");
+  };
+
+  const handleGenerateKey = () => {
+    const newKey = `fos_live_${Array.from({ length: 32 }, () => Math.floor(Math.random() * 36).toString(36)).join("")}`;
+    setApiKey(newKey);
+    showNotice("New Production API Key provisioned and active.");
+  };
 
   return (
     <div className="space-y-6">
+      {notice && (
+        <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-950/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{notice}</span>
+        </div>
+      )}
+
       <div>
         <h1 className="text-xl font-bold text-slate-100 tracking-tight flex items-center gap-2">
           <Settings className="w-5 h-5 text-cyan-400" />
@@ -56,12 +88,13 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle>Enterprise Organization Settings</CardTitle>
           </CardHeader>
-          <div className="space-y-4 text-xs">
+          <form onSubmit={handleSaveOrg} className="space-y-4 text-xs">
             <div>
               <label className="block text-slate-400 mb-1 font-semibold">Organization Name</label>
               <input
                 type="text"
-                defaultValue="Apex Global Manufacturing Inc."
+                value={orgName}
+                onChange={(e) => setOrgName(e.target.value)}
                 className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200"
               />
             </div>
@@ -69,14 +102,15 @@ export default function SettingsPage() {
               <label className="block text-slate-400 mb-1 font-semibold">Primary Industry Vertical</label>
               <input
                 type="text"
-                defaultValue="Automotive EV & Aerospace Components"
+                value={industry}
+                onChange={(e) => setIndustry(e.target.value)}
                 className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200"
               />
             </div>
-            <Button variant="cyan" size="sm">
+            <Button type="submit" variant="cyan" size="sm">
               Save Organization Settings
             </Button>
-          </div>
+          </form>
         </Card>
       )}
 
@@ -116,6 +150,55 @@ export default function SettingsPage() {
         </Card>
       )}
 
+      {activeTab === "notifications" && (
+        <Card className="max-w-2xl">
+          <CardHeader>
+            <CardTitle>Automated Incident & Alarm Routing</CardTitle>
+          </CardHeader>
+          <div className="space-y-4 text-xs">
+            <div className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-950">
+              <div>
+                <p className="font-semibold text-slate-200">Email Shift Digest & Critical Alerts</p>
+                <p className="text-[10px] text-slate-400">Receive morning shift summary and immediate P1 alerts</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={notifSettings.emailAlerts}
+                onChange={(e) => setNotifSettings({ ...notifSettings, emailAlerts: e.target.checked })}
+                className="w-4 h-4 accent-cyan-400 cursor-pointer"
+              />
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-950">
+              <div>
+                <p className="font-semibold text-slate-200">SMS / Emergency Pager Dispatch</p>
+                <p className="text-[10px] text-slate-400">Direct SMS to plant emergency response technician for machine vibration &gt; 8 mm/s</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={notifSettings.smsCritical}
+                onChange={(e) => setNotifSettings({ ...notifSettings, smsCritical: e.target.checked })}
+                className="w-4 h-4 accent-cyan-400 cursor-pointer"
+              />
+            </div>
+            <div className="flex items-center justify-between p-3 rounded-lg border border-slate-800 bg-slate-950">
+              <div>
+                <p className="font-semibold text-slate-200">Slack / Microsoft Teams Webhook</p>
+                <p className="text-[10px] text-slate-400">Stream LangGraph copilot insights to #plant-ops channel</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={notifSettings.slackWebhook}
+                onChange={(e) => setNotifSettings({ ...notifSettings, slackWebhook: e.target.checked })}
+                className="w-4 h-4 accent-cyan-400 cursor-pointer"
+              />
+            </div>
+            <Button variant="cyan" size="sm" onClick={() => showNotice("Notification channels updated.")}>
+              Save Notification Preferences
+            </Button>
+          </div>
+        </Card>
+      )}
+
       {activeTab === "api" && (
         <Card className="max-w-2xl">
           <CardHeader>
@@ -127,11 +210,11 @@ export default function SettingsPage() {
               <input
                 type="text"
                 readOnly
-                defaultValue="fos_live_key_992014810941829048120"
+                value={apiKey}
                 className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-cyan-400 font-mono text-[11px]"
               />
             </div>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleGenerateKey}>
               Generate New Production Key
             </Button>
           </div>

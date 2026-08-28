@@ -33,9 +33,31 @@ const correlationData = [
 
 export default function AnalyticsPage() {
   const [dateRange, setDateRange] = useState("Last 7 Days");
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const handleExport = () => {
+    const csvContent = "Shift,OEE_Score,Pass_Yield,Unplanned_Downtime_Mins\nShift A (Morning),89.4,98.8,18\nShift B (Evening),86.2,97.9,42\nShift C (Night),82.0,96.5,65";
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `factory_os_analytics_${dateRange.toLowerCase().replace(/[^a-z0-9]/g, "_")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    setNotice(`Exported analytics dataset for ${dateRange} (CSV)`);
+    setTimeout(() => setNotice(null), 4000);
+  };
 
   return (
     <div className="space-y-6">
+      {notice && (
+        <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-950/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
+          <span>✓ {notice}</span>
+        </div>
+      )}
+
       {/* Header & Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
@@ -64,7 +86,12 @@ export default function AnalyticsPage() {
             </select>
           </div>
 
-          <Button variant="outline" size="sm" icon={<Download className="w-3.5 h-3.5" />}>
+          <Button
+            variant="outline"
+            size="sm"
+            icon={<Download className="w-3.5 h-3.5" />}
+            onClick={handleExport}
+          >
             Export Dataset
           </Button>
         </div>

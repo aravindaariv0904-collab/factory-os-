@@ -54,14 +54,21 @@ const downtimePareto = [
 
 export default function OverviewPage() {
   const { activeFactory } = useAppStore();
-  const { data: machines } = useApiData(ProductionService.getMachines, MOCK_MACHINES);
-  const { data: recommendations } = useApiData(MaintenanceService.getRecommendations, MOCK_RECOMMENDATIONS);
-  const { data: oee } = useApiData(AnalyticsService.getOEE, {
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const { data: machines, refetch: refetchMachines } = useApiData(ProductionService.getMachines, MOCK_MACHINES);
+  const { data: recommendations, refetch: refetchRecs } = useApiData(MaintenanceService.getRecommendations, MOCK_RECOMMENDATIONS);
+  const { data: oee, refetch: refetchOee } = useApiData(AnalyticsService.getOEE, {
     overall_oee: 87.4,
     availability: 94.5,
     performance: 96.1,
     quality: 98.4,
   });
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await Promise.all([refetchMachines?.(), refetchRecs?.(), refetchOee?.()]);
+    setTimeout(() => setIsRefreshing(false), 600);
+  };
 
   return (
     <div className="space-y-6">
@@ -80,8 +87,14 @@ export default function OverviewPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" icon={<RefreshCw className="w-3.5 h-3.5" />}>
-            Refresh Telemetry
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={isRefreshing}
+            onClick={handleRefresh}
+            icon={<RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin text-cyan-400" : ""}`} />}
+          >
+            {isRefreshing ? "Refreshing..." : "Refresh Telemetry"}
           </Button>
           <a href="/copilot">
             <Button variant="cyan" size="sm" icon={<Zap className="w-3.5 h-3.5" />}>

@@ -1,19 +1,38 @@
 "use client";
 
-import React from "react";
-import { Card, CardHeader, CardTitle } from "@/components/ui/Card";
+import React, { useState } from "react";
+import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { MOCK_RECOMMENDATIONS } from "@/mock";
 import { MaintenanceService } from "@/services";
 import { useApiData } from "@/hooks/useApiData";
-import { Zap, ShieldCheck, CheckCircle2, ArrowRight } from "lucide-react";
+import { Zap, CheckCircle2 } from "lucide-react";
 
 export default function RecommendationsPage() {
-  const { data: recommendations } = useApiData(MaintenanceService.getRecommendations, MOCK_RECOMMENDATIONS);
+  const { data: recommendations, setData: setRecommendations } = useApiData(
+    MaintenanceService.getRecommendations,
+    MOCK_RECOMMENDATIONS
+  );
+  const [notice, setNotice] = useState<string | null>(null);
+
+  const handleApply = (id: string, title: string) => {
+    setRecommendations(
+      recommendations.map((r) => (r.id === id ? { ...r, status: "In Execution" } : r))
+    );
+    setNotice(`Recommendation protocol activated: "${title}"`);
+    setTimeout(() => setNotice(null), 4000);
+  };
 
   return (
     <div className="space-y-6">
+      {notice && (
+        <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-950/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{notice}</span>
+        </div>
+      )}
+
       <div>
         <h1 className="text-xl font-bold text-slate-100 tracking-tight flex items-center gap-2">
           <Zap className="w-5 h-5 text-cyan-400" />
@@ -32,6 +51,7 @@ export default function RecommendationsPage() {
                 <div className="flex items-center gap-2">
                   <Badge variant={rec.impactScore === "High" ? "danger" : "warning"}>{rec.impactScore} Impact</Badge>
                   <Badge variant="cyan">{Math.round(rec.confidenceScore * 100)}% Confidence</Badge>
+                  {rec.status === "In Execution" && <Badge variant="success">Protocol Active</Badge>}
                   <span className="text-[10px] text-slate-500">{rec.createdAt}</span>
                 </div>
                 <h3 className="text-base font-semibold text-slate-100">{rec.title}</h3>
@@ -47,14 +67,20 @@ export default function RecommendationsPage() {
 
               <div className="flex flex-col items-end gap-2 shrink-0">
                 <span className="text-sm font-bold text-emerald-400">Est. Savings: ${(rec.estimatedSavings ?? 0).toLocaleString()}</span>
-                <Button
-                  variant="cyan"
-                  size="sm"
-                  icon={<CheckCircle2 className="w-3.5 h-3.5" />}
-                  onClick={() => alert(`Executed recommendation protocol: ${rec.title}`)}
-                >
-                  Apply Protocol
-                </Button>
+                {rec.status === "In Execution" ? (
+                  <Button variant="outline" size="sm" disabled icon={<CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />}>
+                    Active in MES
+                  </Button>
+                ) : (
+                  <Button
+                    variant="cyan"
+                    size="sm"
+                    icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                    onClick={() => handleApply(rec.id, rec.title)}
+                  >
+                    Apply Protocol
+                  </Button>
+                )}
               </div>
             </div>
           </Card>

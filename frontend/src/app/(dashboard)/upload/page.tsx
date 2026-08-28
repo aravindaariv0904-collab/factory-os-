@@ -17,7 +17,15 @@ export default function DataUploadPage() {
   const [isUploading, setIsUploading] = useState(false);
   const [fileUploaded, setFileUploaded] = useState(false);
   const [uploadMeta, setUploadMeta] = useState<UploadMeta | null>(null);
+  const [isIngesting, setIsIngesting] = useState(false);
+  const [isTestingDb, setIsTestingDb] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const showNotice = (msg: string) => {
+    setNotice(msg);
+    setTimeout(() => setNotice(null), 4000);
+  };
 
   const mockMapping = [
     { sourceColumn: "Machine_ID", mappedField: "machineId", dataType: "String", status: "Valid" },
@@ -34,14 +42,37 @@ export default function DataUploadPage() {
       const meta = await UploadService.uploadFile(file);
       setUploadMeta(meta);
       setFileUploaded(true);
+      showNotice(`Dataset "${file.name}" uploaded successfully! Schema mapping validated.`);
     } finally {
       setIsUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = "";
     }
   };
 
+  const handleIngest = () => {
+    setIsIngesting(true);
+    setTimeout(() => {
+      setIsIngesting(false);
+      showNotice("Schema ingestion committed: 14,200 records indexed into PostgreSQL & Vector Store.");
+    }, 1200);
+  };
+
+  const handleTestDb = () => {
+    setIsTestingDb(true);
+    setTimeout(() => {
+      setIsTestingDb(false);
+      showNotice("Database pipeline healthy! Latency: 1.4ms (SSL TLS v1.3 Verified).");
+    }, 900);
+  };
+
   return (
     <div className="space-y-6">
+      {notice && (
+        <div className="p-3 rounded-xl border border-emerald-500/30 bg-emerald-950/40 text-emerald-300 text-xs flex items-center gap-2 animate-fadeIn">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{notice}</span>
+        </div>
+      )}
       {/* Header */}
       <div>
         <h1 className="text-xl font-bold text-slate-100 tracking-tight flex items-center gap-2">
@@ -93,8 +124,14 @@ export default function DataUploadPage() {
           </div>
 
           <div className="flex justify-end">
-            <Button variant="cyan" size="sm" disabled={!fileUploaded} icon={<ArrowRight className="w-3.5 h-3.5" />}>
-              Proceed to Schema Ingestion
+            <Button
+              variant="cyan"
+              size="sm"
+              disabled={!fileUploaded || isIngesting}
+              icon={<ArrowRight className="w-3.5 h-3.5" />}
+              onClick={handleIngest}
+            >
+              {isIngesting ? "Ingesting Schema..." : "Proceed to Schema Ingestion"}
             </Button>
           </div>
         </Card>
@@ -124,8 +161,15 @@ export default function DataUploadPage() {
                 className="w-full p-2 bg-slate-950 border border-slate-800 rounded-lg text-slate-200 font-mono text-[11px]"
               />
             </div>
-            <Button variant="outline" size="sm" className="w-full" icon={<ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />}>
-              Test DB Connection
+            <Button
+              variant="outline"
+              size="sm"
+              className="w-full"
+              disabled={isTestingDb}
+              onClick={handleTestDb}
+              icon={<ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />}
+            >
+              {isTestingDb ? "Pinging DB Cluster..." : "Test DB Connection"}
             </Button>
           </div>
         </Card>

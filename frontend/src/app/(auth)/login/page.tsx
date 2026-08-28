@@ -12,7 +12,7 @@ export default function LoginPage() {
   const router = useRouter();
   const init = useAppStore((s) => s.init);
   const [email, setEmail] = useState("alexander.vance@factoryos.ai");
-  const [password, setPassword] = useState("••••••••••••");
+  const [password, setPassword] = useState("password123");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

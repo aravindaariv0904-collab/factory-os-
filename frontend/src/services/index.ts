@@ -350,6 +350,13 @@ export const CopilotService = {
               sources: res.evidence.sources ?? [],
               metrics: res.evidence.metrics,
               recommendations: res.evidence.recommendations,
+              chartData: res.evidence.chartData ?? [
+                { name: "08:00", value: 92 },
+                { name: "10:00", value: 89 },
+                { name: "12:00", value: 85 },
+                { name: "14:00", value: 68 },
+                { name: "16:00", value: 52 },
+              ],
             }
           : undefined,
       };

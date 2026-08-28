@@ -105,7 +105,12 @@ export function TopNav() {
         </button>
 
         {/* Quick Action Button */}
-        <Button variant="cyan" size="sm" icon={<Plus className="w-3.5 h-3.5" />}>
+        <Button
+          variant="cyan"
+          size="sm"
+          icon={<Plus className="w-3.5 h-3.5" />}
+          onClick={() => setCommandPaletteOpen(true)}
+        >
           Quick Action
         </Button>
 
