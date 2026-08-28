@@ -2,12 +2,14 @@ from datetime import datetime, timedelta, timezone
 from typing import Any, Union, Optional
 from jose import jwt
 import bcrypt
-import os
 
-SECRET_KEY = os.getenv("SECRET_KEY", "SUPER_SECRET_KEY_FACTORY_OS_2026")
+from backend.app.core.config import get_settings
+
+_settings = get_settings()
+SECRET_KEY = _settings.secret_key
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7  # 7 days
-REFRESH_TOKEN_EXPIRE_DAYS = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = _settings.access_token_expire_minutes
+REFRESH_TOKEN_EXPIRE_DAYS = _settings.refresh_token_expire_days
 
 def create_access_token(subject: Union[str, Any], expires_delta: Optional[timedelta] = None) -> str:
     if expires_delta:

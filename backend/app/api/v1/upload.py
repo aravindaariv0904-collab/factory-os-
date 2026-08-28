@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.pipeline.ingestion import IndustrialDataIngestionPipeline
 from backend.app.db.session import get_db_session
 from backend.app.models import DataUpload
+from backend.app.core.deps import TenantScope
 from backend.app.core.rbac import get_current_user, CurrentUser
 
 router = APIRouter()
@@ -20,6 +21,7 @@ async def upload_file(
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Data ingestion failed: {str(e)}")
 
+    org_id = TenantScope.require_organization(current_user)
     record = DataUpload(
         filename=file.filename,
         file_type=file.content_type or "unknown",
@@ -27,7 +29,8 @@ async def upload_file(
         status="completed",
         columns=result.get("columns", []),
         uploaded_by=current_user.email,
-        organization_id="11111111-1111-1111-1111-111111111111",
+        organization_id=org_id,
+        factory_id=current_user.factory_id,
     )
     db.add(record)
     await db.commit()
@@ -42,10 +45,23 @@ async def upload_file(
 @router.get("/history")
 async def list_uploads(
     db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
     from sqlalchemy import select
 
-    result = await db.execute(select(DataUpload).order_by(DataUpload.created_at.desc()).limit(20))
+    org_id = TenantScope.require_organization(current_user)
+    stmt = (
+        select(DataUpload)
+        .where(DataUpload.organization_id == org_id)
+        .order_by(DataUpload.created_at.desc())
+        .limit(20)
+    )
+    if current_user.factory_id:
+        stmt = stmt.where(
+            (DataUpload.factory_id == current_user.factory_id)
+            | (DataUpload.factory_id.is_(None))
+        )
+    result = await db.execute(stmt)
     uploads = result.scalars().all()
     return [
         {

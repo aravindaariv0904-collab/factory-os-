@@ -17,6 +17,21 @@ from backend.app.models.ai import (
 )
 from backend.app.models.report import SystemReport
 from backend.app.models.upload import DataUpload
+from backend.app.models.platform import (
+    Line,
+    Dataset,
+    DatasetVersion,
+    ProcessingJob,
+    Feature,
+    Experiment,
+    MLModelRecord,
+    ModelVersion,
+    PlatformPrediction,
+    PlatformRecommendation,
+    PlatformReport,
+    AuditEvent,
+    SystemHealthSnapshot,
+)
 
 __all__ = [
     "Organization",
@@ -35,4 +50,17 @@ __all__ = [
     "ChatHistory",
     "SystemReport",
     "DataUpload",
+    "Line",
+    "Dataset",
+    "DatasetVersion",
+    "ProcessingJob",
+    "Feature",
+    "Experiment",
+    "MLModelRecord",
+    "ModelVersion",
+    "PlatformPrediction",
+    "PlatformRecommendation",
+    "PlatformReport",
+    "AuditEvent",
+    "SystemHealthSnapshot",
 ]

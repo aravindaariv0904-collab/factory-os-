@@ -18,13 +18,17 @@ def test_auth_login():
     assert "refresh_token" in data
 
 def test_factories_list():
-    response = client.get("/api/v1/factories/")
+    login_resp = client.post("/api/v1/auth/login", json={"email": "alexander.vance@factoryos.ai", "password": "password123"})
+    token = login_resp.json()["access_token"]
+    response = client.get("/api/v1/factories/", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0
 
 def test_machines_list():
-    response = client.get("/api/v1/machines/")
+    login_resp = client.post("/api/v1/auth/login", json={"email": "alexander.vance@factoryos.ai", "password": "password123"})
+    token = login_resp.json()["access_token"]
+    response = client.get("/api/v1/machines/", headers={"Authorization": f"Bearer {token}"})
     assert response.status_code == 200
     data = response.json()
     assert len(data) > 0

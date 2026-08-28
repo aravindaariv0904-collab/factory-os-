@@ -7,10 +7,19 @@ from backend.app.core.security import SECRET_KEY, ALGORITHM
 security = HTTPBearer()
 
 class CurrentUser:
-    def __init__(self, email: str, role: str, factory_id: Optional[str] = None):
+    def __init__(
+        self,
+        email: str,
+        role: str,
+        organization_id: Optional[str] = None,
+        factory_id: Optional[str] = None,
+        user_id: Optional[str] = None,
+    ):
         self.email = email
         self.role = role
+        self.organization_id = organization_id
         self.factory_id = factory_id
+        self.user_id = user_id
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
@@ -20,13 +29,21 @@ async def get_current_user(
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         role: str = payload.get("role", "Operator")
-        factory_id: Optional[str] = payload.get("factory_id", None)
+        organization_id: Optional[str] = payload.get("organization_id")
+        factory_id: Optional[str] = payload.get("factory_id")
+        user_id: Optional[str] = payload.get("user_id")
         if email is None:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid authentication token",
             )
-        return CurrentUser(email=email, role=role, factory_id=factory_id)
+        return CurrentUser(
+            email=email,
+            role=role,
+            organization_id=organization_id,
+            factory_id=factory_id,
+            user_id=user_id,
+        )
     except JWTError:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

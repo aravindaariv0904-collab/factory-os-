@@ -1,7 +1,8 @@
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
 from pydantic import BaseModel
 from typing import Optional
 from backend.app.ml.predictor import MLPredictor
+from backend.app.core.rbac import get_current_user, CurrentUser
 
 router = APIRouter()
 
@@ -13,7 +14,10 @@ class MachinePredictRequest(BaseModel):
     thermal_gradient: Optional[float] = 1.2
 
 @router.post("/machine")
-async def predict_machine_health(req: MachinePredictRequest):
+async def predict_machine_health(
+    req: MachinePredictRequest,
+    current_user: CurrentUser = Depends(get_current_user),
+):
     telemetry = req.model_dump()
     predictions = MLPredictor.predict_machine_telemetry(telemetry)
     return {

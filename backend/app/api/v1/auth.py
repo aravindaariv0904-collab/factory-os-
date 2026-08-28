@@ -4,6 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import BaseModel, EmailStr
 from backend.app.core.security import create_access_token, create_refresh_token, verify_password, SECRET_KEY, ALGORITHM
 from backend.app.core.rbac import get_current_user, CurrentUser
+from backend.app.core.config import get_settings
 from backend.app.db.session import get_db_session
 from backend.app.models import User
 from jose import jwt, JWTError
@@ -23,31 +24,56 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
 
 class UserProfileOut(BaseModel):
+    id: str
     email: str
     role: str
-    factory_id: str = "fact_01"
+    organization_id: str
+    factory_id: str | None = None
     full_name: str = ""
+
+
+def _token_payload(user: User) -> dict:
+    return {
+        "sub": user.email,
+        "role": user.role,
+        "organization_id": str(user.organization_id),
+        "factory_id": str(user.factory_id) if user.factory_id else None,
+        "user_id": str(user.id),
+    }
 
 
 @router.post("/login", response_model=TokenResponse)
 async def login(req: LoginRequest, db: AsyncSession = Depends(get_db_session)):
+    settings = get_settings()
     user = (await db.execute(select(User).where(User.email == req.email))).scalars().first()
 
     if user:
+        if not user.is_active:
+            raise HTTPException(status_code=401, detail="Account is inactive")
         if not verify_password(req.password, user.hashed_password):
             raise HTTPException(status_code=401, detail="Invalid credentials")
-        role = user.role
-        factory_id = user.factory_id or "fact_01"
     else:
         user_count = (await db.execute(select(func.count(User.id)))).scalar() or 0
-        if user_count > 0 or req.password != "password123":
+        allow_bypass = settings.is_development and (
+            settings.allow_dev_auth_bypass or user_count == 0
+        )
+        if not allow_bypass or req.password != "password123":
             raise HTTPException(status_code=401, detail="Invalid credentials")
-        # Dev bootstrap: accept any seeded-style account when the DB is empty.
-        role = "Plant Manager"
-        factory_id = "fact_01"
+        # Development-only bootstrap when DB has no users
+        payload = {
+            "sub": req.email,
+            "role": "Plant Manager",
+            "organization_id": "11111111-1111-1111-1111-111111111111",
+            "factory_id": "22222222-2222-2222-2222-222222222221",
+            "user_id": None,
+        }
+        access_token = create_access_token(payload)
+        refresh_token = create_refresh_token(payload)
+        return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
-    access_token = create_access_token({"sub": req.email, "role": role, "factory_id": factory_id})
-    refresh_token = create_refresh_token({"sub": req.email, "role": role, "factory_id": factory_id})
+    payload = _token_payload(user)
+    access_token = create_access_token(payload)
+    refresh_token = create_refresh_token(payload)
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)
 
 
@@ -56,12 +82,17 @@ async def refresh_token_endpoint(req: TokenRefreshRequest):
     try:
         payload = jwt.decode(req.refresh_token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
-        role: str = payload.get("role", "Plant Manager")
-        factory_id: str = payload.get("factory_id", "fact_01")
         if not email:
             raise HTTPException(status_code=401, detail="Invalid refresh token")
-        new_access_token = create_access_token({"sub": email, "role": role, "factory_id": factory_id})
-        new_refresh_token = create_refresh_token({"sub": email, "role": role, "factory_id": factory_id})
+        token_data = {
+            "sub": email,
+            "role": payload.get("role", "Operator"),
+            "organization_id": payload.get("organization_id"),
+            "factory_id": payload.get("factory_id"),
+            "user_id": payload.get("user_id"),
+        }
+        new_access_token = create_access_token(token_data)
+        new_refresh_token = create_refresh_token(token_data)
         return TokenResponse(access_token=new_access_token, refresh_token=new_refresh_token)
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired refresh token")
@@ -73,9 +104,20 @@ async def get_my_profile(
     db: AsyncSession = Depends(get_db_session),
 ):
     user = (await db.execute(select(User).where(User.email == current_user.email))).scalars().first()
+    if user:
+        return UserProfileOut(
+            id=str(user.id),
+            email=user.email,
+            role=user.role,
+            organization_id=str(user.organization_id),
+            factory_id=str(user.factory_id) if user.factory_id else None,
+            full_name=user.full_name,
+        )
     return UserProfileOut(
+        id=current_user.user_id or "",
         email=current_user.email,
         role=current_user.role,
-        factory_id=current_user.factory_id or "fact_01",
-        full_name=user.full_name if user else "",
+        organization_id=current_user.organization_id or "",
+        factory_id=current_user.factory_id,
+        full_name="",
     )

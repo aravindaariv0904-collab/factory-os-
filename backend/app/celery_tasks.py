@@ -32,7 +32,7 @@ def generate_plant_report_task(factory_id: str, category: str = "oee", fmt: str 
                 format=fmt.upper(),
                 status="Ready",
                 download_url=f"/api/v1/reports/download/{report_id}",
-                organization_id="11111111-1111-1111-1111-111111111111",
+                organization_id=organization_id,
                 factory_id=factory_id,
             )
             session.add(report)

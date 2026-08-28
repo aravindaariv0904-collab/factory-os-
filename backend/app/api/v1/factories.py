@@ -16,8 +16,12 @@ async def list_factories(
     skip: int = 0,
     limit: int = Query(10, le=100),
     db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    result = await db.execute(select(Factory).offset(skip).limit(limit))
+    query = select(Factory).where(
+        Factory.organization_id == current_user.organization_id
+    )
+    result = await db.execute(query.offset(skip).limit(limit))
     return result.scalars().all()
 
 
@@ -44,8 +48,14 @@ async def create_factory(
 async def get_factory(
     factory_id: UUID,
     db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    result = await db.execute(select(Factory).where(Factory.id == str(factory_id)))
+    result = await db.execute(
+        select(Factory).where(
+            Factory.id == str(factory_id),
+            Factory.organization_id == current_user.organization_id,
+        )
+    )
     factory = result.scalars().first()
     if not factory:
         raise HTTPException(status_code=404, detail="Factory not found")

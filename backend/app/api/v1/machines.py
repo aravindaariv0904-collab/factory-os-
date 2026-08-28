@@ -17,8 +17,17 @@ async def list_machines(
     limit: int = Query(10, le=100),
     status_filter: str | None = Query(None, alias="status"),
     db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    query = select(Machine)
+    from backend.app.models import Factory
+
+    org_id = current_user.organization_id
+    if not org_id:
+        raise HTTPException(status_code=403, detail="User is not scoped to an organization")
+    factory_ids = (
+        await db.execute(select(Factory.id).where(Factory.organization_id == org_id))
+    ).scalars().all()
+    query = select(Machine).where(Machine.plant_id.in_(factory_ids))
     if status_filter:
         query = query.where(Machine.status == status_filter)
     result = await db.execute(query.offset(skip).limit(limit))
@@ -42,8 +51,20 @@ async def create_machine(
 async def get_machine(
     machine_id: UUID,
     db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_current_user),
 ):
-    result = await db.execute(select(Machine).where(Machine.id == str(machine_id)))
+    from backend.app.models import Factory
+
+    org_id = current_user.organization_id
+    factory_ids = (
+        await db.execute(select(Factory.id).where(Factory.organization_id == org_id))
+    ).scalars().all()
+    result = await db.execute(
+        select(Machine).where(
+            Machine.id == str(machine_id),
+            Machine.plant_id.in_(factory_ids),
+        )
+    )
     machine = result.scalars().first()
     if not machine:
         raise HTTPException(status_code=404, detail="Machine not found")

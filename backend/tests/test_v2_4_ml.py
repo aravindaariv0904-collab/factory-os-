@@ -18,8 +18,11 @@ def test_ml_predictor_inference():
     assert preds["failure_probability"] > 0.0
 
 def test_predict_api_endpoint():
+    login_resp = client.post("/api/v1/auth/login", json={"email": "alexander.vance@factoryos.ai", "password": "password123"})
+    token = login_resp.json()["access_token"]
     resp = client.post(
         "/api/v1/predict/machine",
+        headers={"Authorization": f"Bearer {token}"},
         json={
             "machine_id": "mch_104",
             "temperature_deg_c": 84.1,
