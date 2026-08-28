@@ -26,6 +26,9 @@ frontend/dist/
 # databases & generated models
 *.db
 /models/
+backend/chroma_db/
+backend/app/ai_engine/saved_models/
+*.joblib
 
 # misc
 .DS_Store
