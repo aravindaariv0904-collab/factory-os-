@@ -6,6 +6,7 @@ from backend.app.db.session import get_db_session
 from backend.app.models import QualityReport
 from backend.app.schemas.quality import QualityReportOut, QualityReportCreate
 from backend.app.core.rbac import get_current_user, CurrentUser
+from backend.app.core.deps import TenantScope, get_tenant_user
 
 router = APIRouter()
 
@@ -15,8 +16,11 @@ async def list_quality_reports(
     skip: int = 0,
     limit: int = Query(10, le=100),
     db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_tenant_user),
 ):
-    result = await db.execute(select(QualityReport).offset(skip).limit(limit))
+    stmt = TenantScope.apply_org_filter(select(QualityReport), QualityReport, current_user)
+    stmt = stmt.offset(skip).limit(limit)
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 

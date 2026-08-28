@@ -31,10 +31,14 @@ def test_golden_dataset_profiles_maps_and_requires_leakage_review(tmp_path):
     assert record.row_count == 14
     assert any(mapping.canonical == "process.temperature" for mapping in mappings)
     assert any(mapping.canonical == "quality.defect" for mapping in mappings)
+    assert all(mapping.mapping_method and mapping.reason for mapping in mappings)
     assert "Defect_Category" in profile.leakage_candidates
     assert status == QUALITY_REVIEW
     assert any(issue["code"] == "POTENTIAL_LEAKAGE" for issue in issues)
     assert Path(record.raw_path).read_bytes() == raw
+    score = DataQualityEngine.score(profile, mappings)
+    assert set(score["dimensions"]) == {"completeness", "uniqueness", "numeric_range_validity", "semantic_mapping_confidence", "schema_integrity"}
+    assert 0 <= score["score"] <= 1
 
 
 def test_training_is_reproducible_and_inference_requires_same_artifact(tmp_path):

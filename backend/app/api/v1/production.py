@@ -12,6 +12,7 @@ from backend.app.schemas.production import (
     DowntimeEventCreate,
 )
 from backend.app.core.rbac import get_current_user, CurrentUser
+from backend.app.core.deps import TenantScope, get_tenant_user
 
 router = APIRouter()
 
@@ -21,8 +22,11 @@ async def list_orders(
     skip: int = 0,
     limit: int = Query(10, le=100),
     db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_tenant_user),
 ):
-    result = await db.execute(select(ProductionOrder).offset(skip).limit(limit))
+    stmt = TenantScope.apply_org_filter(select(ProductionOrder), ProductionOrder, current_user)
+    stmt = stmt.offset(skip).limit(limit)
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 
@@ -48,8 +52,11 @@ async def list_downtime(
     skip: int = 0,
     limit: int = Query(10, le=100),
     db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_tenant_user),
 ):
-    result = await db.execute(select(DowntimeEvent).offset(skip).limit(limit))
+    stmt = TenantScope.apply_org_filter(select(DowntimeEvent), DowntimeEvent, current_user)
+    stmt = stmt.offset(skip).limit(limit)
+    result = await db.execute(stmt)
     return result.scalars().all()
 
 

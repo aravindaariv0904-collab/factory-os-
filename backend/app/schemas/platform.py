@@ -128,11 +128,21 @@ class RecommendationActionRequest(BaseModel):
     reason: Optional[str] = None
 
 
+class RecommendationCreateRequest(BaseModel):
+    prediction_id: str
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+
+
 class PlatformReportCreateRequest(BaseModel):
     title: str
     report_type: str
     format: str = "PDF"
     resource_id: Optional[str] = None
+    model_version_id: Optional[str] = None
+    prediction_id: Optional[str] = None
+    recommendation_id: Optional[str] = None
 
 
 class PlatformReportOut(BaseModel):

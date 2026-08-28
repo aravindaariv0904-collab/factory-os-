@@ -1,16 +1,104 @@
 """Platform recommendation approval workflow API."""
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from backend.app.core.deps import TenantScope, get_tenant_user
 from backend.app.core.rbac import CurrentUser
 from backend.app.db.session import get_db_session
-from backend.app.models.platform import PlatformRecommendation
-from backend.app.schemas.platform import RecommendationActionRequest
+from backend.app.models.platform import PlatformPrediction, PlatformRecommendation
+from backend.app.schemas.platform import RecommendationActionRequest, RecommendationCreateRequest
 from backend.app.services.audit_service import audit_service
 
 router = APIRouter()
+
+# Conservative per-defect unit cost (USD) used only to size the estimated savings
+# of an actionable recommendation. Derives from the real, linked prediction.
+UNIT_DEFECT_COST_USD = 450.0
+
+
+@router.post(
+    "",
+    status_code=status.HTTP_201_CREATED,
+    response_model=dict,
+)
+async def create_recommendation(
+    body: RecommendationCreateRequest,
+    db: AsyncSession = Depends(get_db_session),
+    user: CurrentUser = Depends(get_tenant_user),
+):
+    org_id = TenantScope.require_organization(user)
+    if not body.prediction_id:
+        raise HTTPException(status_code=422, detail="prediction_id is required")
+    prediction = (
+        await db.execute(
+            select(PlatformPrediction).where(
+                PlatformPrediction.id == body.prediction_id,
+                PlatformPrediction.organization_id == org_id,
+            )
+        )
+    ).scalars().first()
+    if not prediction:
+        raise HTTPException(status_code=404, detail="Prediction not found")
+    TenantScope.enforce_resource_access(user, prediction)
+    if prediction.status != "completed":
+        raise HTTPException(
+            status_code=409,
+            detail="Recommendation requires a completed prediction",
+        )
+
+    predicted = None
+    if prediction.output_data:
+        predicted = prediction.output_data.get("prediction")
+    predicted_label = str(predicted) if predicted is not None else "unknown"
+    title = body.title or f"Actionable recommendation from prediction {str(prediction.id)[:8]}"
+    description = body.description or (
+        f"Model predicted outcome '{predicted_label}' for the reviewed input. "
+        f"Inspect the linked prediction and apply corrective action."
+    )
+    category = body.category or "Process Optimization"
+    confidence = prediction.confidence
+    savings = confidence * UNIT_DEFECT_COST_USD if confidence is not None else None
+
+    rec = PlatformRecommendation(
+        prediction_id=prediction.id,
+        title=title,
+        description=description,
+        category=category,
+        confidence_score=confidence,
+        estimated_savings=savings,
+        status="pending",
+        organization_id=org_id,
+        factory_id=user.factory_id,
+    )
+    db.add(rec)
+    await audit_service.log(
+        db,
+        organization_id=org_id,
+        factory_id=user.factory_id,
+        user_email=user.email,
+        action="RECOMMENDATION_CREATED",
+        resource_type="platform_recommendation",
+        resource_id=str(rec.id),
+        metadata={
+            "prediction_id": str(prediction.id),
+            "predicted": predicted_label,
+            "confidence": confidence,
+        },
+    )
+    await db.commit()
+    await db.refresh(rec)
+    return {
+        "id": str(rec.id),
+        "title": rec.title,
+        "description": rec.description,
+        "category": rec.category,
+        "confidence_score": rec.confidence_score,
+        "estimated_savings": rec.estimated_savings,
+        "status": rec.status,
+        "prediction_id": str(prediction.id),
+        "created_at": rec.created_at.isoformat(),
+    }
 
 
 @router.get("", response_model=list[dict])

@@ -7,6 +7,7 @@ from backend.app.db.session import get_db_session
 from backend.app.models import MaintenanceLog, Machine
 from backend.app.schemas.maintenance import WorkOrderCreate, MaintenanceLogOut
 from backend.app.core.rbac import get_current_user, CurrentUser
+from backend.app.core.deps import TenantScope, get_tenant_user
 
 router = APIRouter()
 
@@ -53,6 +54,9 @@ async def list_maintenance_logs(
     skip: int = 0,
     limit: int = Query(20, le=100),
     db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_tenant_user),
 ):
-    result = await db.execute(select(MaintenanceLog).offset(skip).limit(limit))
+    stmt = TenantScope.apply_org_filter(select(MaintenanceLog), MaintenanceLog, current_user)
+    stmt = stmt.offset(skip).limit(limit)
+    result = await db.execute(stmt)
     return result.scalars().all()

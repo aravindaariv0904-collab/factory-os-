@@ -30,6 +30,7 @@ frontend/dist/
 backend/chroma_db/
 backend/app/ai_engine/saved_models/
 *.joblib
+storage/
 
 # misc
 .DS_Store

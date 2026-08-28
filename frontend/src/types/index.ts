@@ -106,7 +106,7 @@ export interface AIRecommendation {
   estimatedSavings: number; // USD or hrs
   confidenceScore: number; // e.g. 0.94
   createdAt: string;
-  status: "New" | "In Review" | "Applied" | "Dismissed";
+  status: "New" | "In Review" | "In Execution" | "Applied" | "Dismissed";
   actions: string[];
 }
 

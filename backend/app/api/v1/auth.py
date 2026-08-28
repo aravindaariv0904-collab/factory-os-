@@ -59,13 +59,22 @@ async def login(req: LoginRequest, db: AsyncSession = Depends(get_db_session)):
         )
         if not allow_bypass or req.password != "password123":
             raise HTTPException(status_code=401, detail="Invalid credentials")
-        # Development-only bootstrap when DB has no users
+        # Development-only bootstrap: used ONLY when is_development=True AND
+        # the database contains zero real users.
+        # The organization_id below is a zero-filled dev sentinel — it will never
+        # match a real organization because seed_database.py creates real orgs with
+        # different UUIDs. This exists solely to allow the frontend to start in dev
+        # mode before any users are seeded.
+        # WARNING: This code path is disabled when ENVIRONMENT != development.
+        DEV_BOOTSTRAP_ORG = "00000000-0000-0000-0000-000000000000"
+        DEV_BOOTSTRAP_FACTORY = "00000000-0000-0000-0000-000000000001"
         payload = {
             "sub": req.email,
             "role": "Plant Manager",
-            "organization_id": "11111111-1111-1111-1111-111111111111",
-            "factory_id": "22222222-2222-2222-2222-222222222221",
+            "organization_id": DEV_BOOTSTRAP_ORG,
+            "factory_id": DEV_BOOTSTRAP_FACTORY,
             "user_id": None,
+            "_dev_bootstrap": True,  # Allows detection by downstream guards
         }
         access_token = create_access_token(payload)
         refresh_token = create_refresh_token(payload)

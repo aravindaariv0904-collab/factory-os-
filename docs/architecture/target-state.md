@@ -1,68 +1,76 @@
-# Factory OS — Target-State Architecture
+# Factory OS — Target Logical Architecture
 
-**Date:** 2026-08-28
-**Author:** Principal Engineering Lead
-**Status:** Design baseline for integration work.
+**Author:** Principal Engineering Lead  
+**Specification:** Operational Manufacturing Intelligence & Industrial IoT Platform
 
-## Principles applied
-- Single source of truth per concern (auth, tenant, canonical schema, preprocessing, model versioning, audit, reports).
-- Raw data immutable (BRONZE/SILVER/GOLD).
-- Human-in-the-loop for high-impact actions.
-- Fail visible; no mock in production paths.
-- Reproducible lineage: dataset/version → schema/feature/preprocessor/model version → prediction → recommendation → report.
+---
 
-## Logical flow
+## 1. Target End-to-End Pipeline
 
 ```
-USER
-  ↓
-WEB APPLICATION  (Next.js)
-  ↓
-API / APPLICATION SERVICES  (FastAPI backend :8000)
-  ↓
-DOMAIN SERVICES
-  ↓
-DATA + JOB ORCHESTRATION  (Celery + Redis)
-  ↓
-POSTGRESQL / OBJECT STORAGE / TIME-SERIES / VECTOR STORE
-  ↓
-DATA INTELLIGENCE  (adaptive_intelligence.py engine)
-  ↓
-ML / MLOPS  (ExperimentEngine, ArtifactInferenceService, ModelVersion)
-  ↓
-DECISION ENGINE  (policy → decision → recommendation)
-  ↓
-RECOMMENDATION WORKFLOW  (approval)
-  ↓
-AUDIT / REPORTING / OUTCOME
-  ↓
-MONITORING / DRIFT / FEEDBACK
+INDUSTRIAL DATA SOURCES (OPC-UA / MQTT / SCADA / CSV / MES)
+                      │
+                      ▼
+            EDGE TELEMETRY GATEWAY
+            (Buffering, Quality Flags, Sequence Verification)
+                      │
+                      ▼
+            DATA INGESTION & REGISTRATION
+            (Security Validation, Hash Digest, Raw Storage)
+                      │
+                      ▼
+         ADAPTIVE SCHEMA & QUALITY ENGINE
+   (Profiling, Semantic Mapping, Quality Gates, Leakage Check)
+                      │
+                      ▼
+          HUMAN-IN-THE-LOOP APPROVAL
+         (Schema & Target Confirmation)
+                      │
+                      ▼
+          REPRODUCIBLE ML TRAINING PIPELINE
+  (Feature Engineering, Pipeline Serialization, Versioned Artifact)
+                      │
+                      ▼
+           MODEL REGISTRY & PROMOTION
+     (Technical Gate, F1/FNR Thresholds, Approval Workflow)
+                      │
+                      ▼
+           PRODUCTION INFERENCE SERVICE
+   (Artifact Loading, Lineage Trace, Per-Prediction Explanation)
+                      │
+                      ▼
+            POLICY & DECISION ENGINE
+     (Predictions → Business Rules → Recommendation Lifecycle)
+                      │
+                      ▼
+         OPERATOR APPROVAL & OUTCOME CAPTURE
+      (Action Tracking, Confirmed Result, Impact Metrics)
+                      │
+                      ▼
+         DRIFT MONITORING & RETRAINING LOOP
+  (PSI Feature Drift, Prediction Shift, Retraining Decision Trigger)
 ```
 
-Industrial connectivity path (target, not yet wired):
-```
-PLC/Sensor/SCADA/MES/ERP → Edge Connector → OPC-UA/MQTT Adapter → Telemetry Gateway
-  → Event/Streaming Layer → Time-Series Storage → Feature Processing → Inference → Alerts/Decisions
-```
+---
 
-## Canonical manufacturing schema (versioned)
-`manufacturing-canonical/v1` already defined in `adaptive_intelligence.py` (CANONICAL_FIELDS): asset.identifier, operations.timestamp, process.temperature, process.vibration, process.rotational_speed, process.torque, maintenance.hours, maintenance.tool_wear, quality.defect, quality.score, production.count, inventory.quantity, workforce.identifier, safety.incident, energy.consumption.
+## 2. Domain Responsibilities & Bounded Contexts
 
-## Domain ownership
-- **Antigravity:** frontend, UX, operator workflows, states.
-- **Cursor:** backend APIs, domain services, DB, auth/authz, jobs, storage, audit, integrations.
-- **Codex:** data intelligence, ML/MLOps, adaptive pipelines, model lifecycle.
-- **OpenCode:** QA, security, reliability, release validation.
+### 2.1 Domain 1: Frontend Application (Next.js 14)
+- **Responsibility:** User experience, operator dashboards, recommendation approval workflows, schema mapping UI, dataset management.
+- **Strict Boundary:** No mock data fallback in production (`NODE_ENV === "production"`). All API network errors trigger explicit error/offline state indicators.
 
-## Key integration decisions (this cycle)
-1. Expose the real `adaptive_intelligence` engine via authenticated, tenant-scoped API endpoints and persist to the existing `platform.py` model layer (Dataset, DatasetVersion, Experiment, ModelVersion, PlatformPrediction, PlatformRecommendation, PlatformReport).
-2. Persist BRONZE raw data immutably via `StorageService` (tenant-scoped path) and record file hash + lineage.
-3. Reports become real generated artifacts stored in object storage with a working download endpoint (no placeholders).
-4. All write paths derive `organization_id` from the authenticated `CurrentUser` (remove hardcoded `11111111-...`).
-5. Enforce auth on all non-whitelisted routes.
-6. Add the golden-workflow E2E + data-quality + schema-adaptation + security test matrix.
+### 2.2 Domain 2: Backend Platform Services (FastAPI)
+- **Responsibility:** REST API routing, JWT authentication, RBAC authorization, tenant scoping (`organization_id`), job orchestration (`ProcessingJob`), object storage abstraction, and audit logging.
+- **Strict Boundary:** Enforces tenant isolation on every single entity query. Never accepts or returns un-scoped queries across tenant boundaries.
 
-## Future (not claimed this cycle)
-- OPC-UA/MQTT live ingestion, edge buffering/reconnect, real telemetry identity.
-- PostgreSQL RLS enforcement.
-- Autonomous decisions (still human-gated).
+### 2.3 Domain 3: Adaptive Data Intelligence Engine
+- **Responsibility:** Automated data profiling, fuzzy/semantic mapping to canonical schema concepts, deterministic data quality scoring, outcome leakage detection, and raw file preservation (BRONZE layer).
+
+### 2.4 Domain 4: MLOps & Model Lifecycle Engine
+- **Responsibility:** Multi-algorithm training (`Random Forest`, `Gradient Boosting`, `Logistic Regression`), hyperparameter search, cross-validation, serialized pipeline artifacts (`joblib`), model registry versioning, promotion gates (`F1 ≥ 0.70`, `FNR ≤ 0.30`), and drift monitoring (`PSI`).
+
+### 2.5 Domain 5: Operational Decision Engine
+- **Responsibility:** Converting ML prediction probabilities into actionable, policy-governed recommendations with mandatory human-in-the-loop approval workflows and outcome tracking.
+
+### 2.6 Domain 6: Industrial IoT & OT Connectivity Layer
+- **Responsibility:** Edge connectivity adapters (OPC-UA, MQTT, Modbus), telemetry quality flag parsing, clock synchronization, connection loss buffering, and real-time streaming to backend.

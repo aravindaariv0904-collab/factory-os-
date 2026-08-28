@@ -85,10 +85,14 @@ class FieldMapping:
     confidence: float
     unit: str | None
     accepted: bool
+    reason: str
+    mapping_method: str
 
 
 @dataclass
 class DatasetProfile:
+    row_count: int
+    column_count: int
     numeric_columns: list[str]
     categorical_columns: list[str]
     identifier_columns: list[str]
@@ -171,21 +175,24 @@ class AdaptiveSchemaIntelligence:
         for source in columns:
             normal = _normalise(source)
             compact = normal.replace(" ", "")
-            ranked: list[tuple[float, str]] = []
+            ranked: list[tuple[float, str, str, str]] = []
             for canonical, aliases in CANONICAL_FIELDS.items():
                 for alias in aliases:
                     alias_normal = _normalise(alias)
                     if normal == alias_normal or compact == alias_normal.replace(" ", ""):
-                        ranked.append((1.0, canonical))
+                        ranked.append((1.0, canonical, "exact_alias", f"normalized source matches alias '{alias}'"))
                     elif alias_normal in normal or normal in alias_normal:
-                        ranked.append((0.82, canonical))
+                        ranked.append((0.82, canonical, "alias_containment", f"source contains alias '{alias}'"))
                     else:
                         overlap = len(set(normal.split()) & set(alias_normal.split()))
                         if overlap:
-                            ranked.append((round(0.45 + overlap / max(len(alias_normal.split()), 1) * 0.3, 2), canonical))
-            confidence, canonical = max(ranked, default=(0.0, None))
+                            ranked.append((round(0.45 + overlap / max(len(alias_normal.split()), 1) * 0.3, 2), canonical, "token_overlap", f"shares {overlap} normalized token(s) with alias '{alias}'"))
+            confidence, canonical, method, reason = max(
+                ranked,
+                default=(0.0, None, "unmapped", "no configured alias or token overlap"),
+            )
             unit = next((label for token, label in UNIT_PATTERNS.items() if token in compact), None)
-            mappings.append(FieldMapping(source, canonical, confidence, unit, confidence >= 0.8))
+            mappings.append(FieldMapping(source, canonical, confidence, unit, confidence >= 0.8, reason, method))
         return mappings
 
     @staticmethod
@@ -210,7 +217,7 @@ class AdaptiveSchemaIntelligence:
             distributions[column] = {"min": float(values.min()), "max": float(values.max()), "mean": float(values.mean()), "median": float(values.median())}
         imbalance = {column: {str(key): int(value) for key, value in df[column].value_counts(dropna=False).items()} for column in targets}
         leakage = [column for column in df.columns if any(term in _normalise(column).replace(" ", "") for term in LEAKAGE_TERMS)]
-        return DatasetProfile(numeric, categorical, identifiers, timestamps, targets, missingness, cardinality,
+        return DatasetProfile(len(df), len(df.columns), numeric, categorical, identifiers, timestamps, targets, missingness, cardinality,
                               distributions, int(df.duplicated().sum()), constants, near_constants, anomalies, imbalance, leakage)
 
 
@@ -240,6 +247,24 @@ class DataQualityEngine:
                 state = candidate
                 break
         return state, issues
+
+    @staticmethod
+    def score(profile: DatasetProfile, mappings: Iterable[FieldMapping]) -> dict[str, Any]:
+        """Explainable quality dimensions; this is informational, never a training override."""
+        mapped = list(mappings)
+        total = max(len(profile.missingness), 1)
+        completeness = 1.0 - sum(profile.missingness.values()) / total
+        uniqueness = 1.0 if not profile.duplicate_rows else max(0.0, 1.0 - profile.duplicate_rows / max(profile.row_count, 1))
+        validity = 1.0 - sum(1 for count in profile.range_anomalies.values() if count) / max(len(profile.range_anomalies), 1)
+        semantic_confidence = sum(item.confidence for item in mapped) / max(len(mapped), 1)
+        dimensions = {
+            "completeness": round(completeness, 4),
+            "uniqueness": round(uniqueness, 4),
+            "numeric_range_validity": round(validity, 4),
+            "semantic_mapping_confidence": round(semantic_confidence, 4),
+            "schema_integrity": 1.0 if profile.numeric_columns else 0.0,
+        }
+        return {"dimensions": dimensions, "score": round(sum(dimensions.values()) / len(dimensions), 4), "interpretation": "Informational only; inspect dimension evidence and quality issues before use."}
 
 
 @dataclass
@@ -305,10 +330,28 @@ class ArtifactInferenceService:
 
     def predict(self, raw_values: dict[str, Any]) -> dict[str, Any]:
         features = self.metadata["feature_columns"]
-        missing = [feature for feature in features if feature not in raw_values]
-        if missing:
-            raise ValueError(f"Inference rejected: required feature values missing: {missing}")
-        frame = pd.DataFrame([{feature: raw_values[feature] for feature in features}])
+        
+        # Build normalized lookup for raw_values keys to support feature name alias resolution
+        raw_normalized = {_normalise(k): v for k, v in raw_values.items()}
+
+        row_data: dict[str, Any] = {}
+        for feature in features:
+            if feature in raw_values:
+                row_data[feature] = raw_values[feature]
+            else:
+                norm_feat = _normalise(feature)
+                # Try exact normalized match or substring match
+                match_val = None
+                for raw_k, raw_v in raw_normalized.items():
+                    if norm_feat in raw_k or raw_k in norm_feat or any(part in raw_k for part in norm_feat.split() if len(part) > 3):
+                        match_val = raw_v
+                        break
+                row_data[feature] = match_val if match_val is not None else np.nan
+
+        if not raw_values or all(pd.isna(v) for v in row_data.values()):
+            raise ValueError(f"Inference rejected: required feature values missing: {features}")
+
+        frame = pd.DataFrame([row_data])
         probabilities = self.pipeline.predict_proba(frame)[0]
         classes = list(self.pipeline.named_steps["model"].classes_)
         predicted_index = int(np.argmax(probabilities))

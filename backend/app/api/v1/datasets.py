@@ -1,5 +1,6 @@
 """Dataset platform API — upload → profile → mapping → quality."""
 from typing import Optional
+from pydantic import BaseModel
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import desc, select
@@ -254,3 +255,65 @@ async def get_dataset_quality(
         issues=quality.get("issues", []),
         warnings=quality.get("warnings", []),
     )
+
+
+class DatasetTrainRequest(BaseModel):
+    target_column: Optional[str] = None
+    allow_review: bool = True
+
+
+@router.post("/{dataset_id}/train", status_code=status.HTTP_201_CREATED)
+async def train_dataset(
+    dataset_id: str,
+    body: Optional[DatasetTrainRequest] = None,
+    db: AsyncSession = Depends(get_db_session),
+    user: CurrentUser = Depends(get_tenant_user),
+):
+    org_id = TenantScope.require_organization(user)
+    version = await _get_latest_version_or_404(db, dataset_id, org_id, user)
+
+    req_body = body or DatasetTrainRequest()
+
+    job = await job_service.create(
+        db,
+        job_type="train",
+        organization_id=org_id,
+        factory_id=user.factory_id,
+        created_by=user.email,
+        resource_type="dataset_version",
+        resource_id=str(version.id),
+    )
+
+    try:
+        model_record, model_ver = await dataset_service.train_from_version(
+            db,
+            version,
+            organization_id=org_id,
+            user_email=user.email,
+            target_column=req_body.target_column,
+            allow_review=req_body.allow_review,
+        )
+        await job_service.mark_completed(
+            db, job, result={"model_id": str(model_record.id), "version_id": str(model_ver.id)}
+        )
+        await db.commit()
+    except ValueError as exc:
+        await job_service.mark_failed(db, job, str(exc))
+        await db.commit()
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    except Exception as exc:
+        await job_service.mark_failed(db, job, str(exc))
+        await db.commit()
+        raise HTTPException(status_code=500, detail=f"Training failed: {exc}") from exc
+
+    return {
+        "job_id": str(job.id),
+        "model_id": str(model_record.id),
+        "model_name": model_record.name,
+        "version_id": str(model_ver.id),
+        "version_tag": model_ver.version_tag,
+        "status": model_ver.status,
+        "artifact_path": model_ver.artifact_path,
+        "metrics": model_ver.metrics,
+    }
+

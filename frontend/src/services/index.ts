@@ -51,7 +51,7 @@ export function clearTokens(): void {
   window.localStorage.removeItem(REFRESH_KEY);
 }
 
-/* ---------------------------------- HTTP client ---------------------------------- */
+const IS_DEV = process.env.NODE_ENV === "development";
 
 async function request<T>(url: string, options?: RequestInit, fallback?: T): Promise<T | undefined> {
   const token = getAccessToken();
@@ -67,15 +67,16 @@ async function request<T>(url: string, options?: RequestInit, fallback?: T): Pro
     if (res.ok) {
       return (await res.json()) as T;
     }
-    if (res.status === 401 && url.includes("/auth/")) {
-      // Auth failures fall through to mock so the demo stays navigable.
-    } else {
-      console.warn(`[Factory OS API] ${res.status} for ${url}`);
-    }
+    console.warn(`[Factory OS API] ${res.status} for ${url}`);
   } catch (err) {
-    console.warn(`[Factory OS API] Backend fallback engaged for ${url}:`, err);
+    console.warn(`[Factory OS API] Network error for ${url}:`, err);
   }
-  return fallback;
+  // Mock fallback is ONLY allowed in local development environment.
+  // In production, return undefined so UI components display offline/error states.
+  if (IS_DEV) {
+    return fallback;
+  }
+  return undefined;
 }
 
 function backendUrl(path: string): string {

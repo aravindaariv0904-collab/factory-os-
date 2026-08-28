@@ -18,8 +18,14 @@ def _run_async(coro):
 
 
 @celery_app.task(name="backend.app.celery_tasks.generate_plant_report_task")
-def generate_plant_report_task(factory_id: str, category: str = "oee", fmt: str = "PDF") -> dict:
-    """Generates a plant report record asynchronously and persists it."""
+def generate_plant_report_task(
+    organization_id: str, factory_id: str, category: str = "oee", fmt: str = "PDF"
+) -> dict:
+    """Generates a plant report record asynchronously and persists it.
+
+    NOTE: organization_id MUST be passed by the caller from the authenticated user's
+    JWT context. Never pass a hard-coded UUID.
+    """
     from backend.app.db.session import AsyncSessionLocal
     from backend.app.models import SystemReport
 
@@ -46,10 +52,17 @@ def generate_plant_report_task(factory_id: str, category: str = "oee", fmt: str 
 
 @celery_app.task(name="backend.app.celery_tasks.refresh_model_registry_task")
 def refresh_model_registry_task() -> dict:
-    """Rebuilds the in-memory ML model registry (warm start for inference)."""
+    """Rebuilds the in-memory synthetic ML model registry (warm start for inference).
+
+    NOTE: This refreshes only the synthetic baseline models used by /predict/machine.
+    Adaptive production models are loaded on-demand from storage artifacts via
+    ArtifactInferenceService and do not require this task.
+    """
     from backend.app.ml.models import ml_registry
 
-    ml_registry.fit()
+    # _fit_baseline_synthetic_models() is the correct existing method.
+    # ml_registry.fit() does not exist -- that was a defect (D-05).
+    ml_registry._fit_baseline_synthetic_models()
     return {"status": "refreshed", "models": ["classifier", "rul_regressor", "anomaly_detector"]}
 
 

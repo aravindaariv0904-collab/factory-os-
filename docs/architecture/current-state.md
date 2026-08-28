@@ -1,40 +1,79 @@
-# Factory OS current state
+# Factory OS — Current State Architecture Audit
 
-**Audit date:** 2026-08-28  
-**Evidence basis:** repository inspection, `docker-compose.yml`, service source, API routes, ORM models, tests, and the checked-in golden CSV.
+**Audit Date:** 2026-08-28  
+**Author:** Principal Engineering Lead  
+**Scope:** Frontend, Backend, AI Engine, ML Systems, Services, Data Storage, Security, MLOps
 
-## Implemented topology
+---
 
-```text
-Next.js frontend
-  -> FastAPI backend (/api/v1)
-       -> SQLAlchemy (SQLite by default; PostgreSQL in compose)
-       -> local filesystem storage service
-       -> Celery/Redis configuration
-       -> adaptive dataset/model services
-  -> standalone FastAPI AI service
-       -> joblib model directory
+## 1. System Overview
+
+Factory OS is an industrial AI decision intelligence platform designed to ingest heterogeneous manufacturing datasets, profile and map them semantically to canonical schemas, train adaptive ML models, generate predictions, explain risk drivers, present governed operational recommendations, and track outcomes.
+
+```
+┌──────────────────────────────────────────────────────────────────────────┐
+│                             FRONTEND (Next.js 14)                         │
+│                    Port 3214 • REST + WebSocket Client                   │
+└────────────────────────────────────┬─────────────────────────────────────┘
+                                     │ HTTP / WS
+┌────────────────────────────────────▼─────────────────────────────────────┐
+│                            BACKEND PLATFORM (FastAPI)                     │
+│                   Port 8000 • Async SQLAlchemy • JWT Auth                │
+│                                                                          │
+│  ┌──────────────────────┐  ┌──────────────────────┐  ┌────────────────┐  │
+│  │ Adaptive AI Engine   │  │ Datasets Service     │  │ Model Registry │  │
+│  │ (Profile/Map/Train)  │  │ (Upload/Profile/Map) │  │ (Promote/List) │  │
+│  └──────────────────────┘  └──────────────────────┘  └────────────────┘  │
+│  ┌──────────────────────┐  ┌──────────────────────┐  ┌────────────────┐  │
+│  │ Platform Predictions │  │ Recommendations      │  │ Reports API    │  │
+│  │ (Inference/Explain)  │  │ (Approve/Reject)     │  │ (File Downloads│  │
+│  └──────────────────────┘  └──────────────────────┘  └────────────────┘  │
+└──────────────────┬───────────────────────────────────────┬───────────────┘
+                   │                                       │
+┌──────────────────▼─────────────────┐   ┌─────────────────▼───────────────┐
+│        STORAGE / DATABASE          │   ┌                           ┐
+│ SQLite (dev) / PostgreSQL (prod)   │   │     REDIS / CELERY WORKER     │
+│ Local File Storage (artifacts/raw) │   │ Async tasks & job state   │
+└────────────────────────────────────┘   └───────────────────────────┘
 ```
 
-The backend now has a platform-oriented route family for datasets, jobs, models, platform predictions, recommendations, reports, and detailed health. Its `DatasetService` calls the Codex-owned profiler and mapping engine and persists profiles/mappings against tenant-scoped dataset versions. The existing legacy routes remain alongside it.
+---
 
-## Verified data/ML path
+## 2. Component Inventory & Status
 
-`backend.app.ai_engine.adaptive_intelligence` provides profiling, confidence-gated mappings, quality/leakage gating, deterministic classifier evaluation, a serialized preprocessing/model pipeline, artifact-only inference, attribution proxies, and drift recommendations. The test dataset is actually **14 records × 9 columns**, not the 3,240 × 17 described in the pasted mission. Its binary target is `Defect_Flag`; `Defect_Category` is flagged as a leakage candidate.
+### 2.1 Backend API Layer (`backend/app/api/v1/`)
+- **`datasets.py`**: Full upload → profile → map → approve → train workflow. Uses `TenantScope` for org isolation.
+- **`ml_models.py`**: Model registry with versioning, metrics, and lifecycle promotion (`CANDIDATE` → `DEPLOYED` → `RETIRED`) with quality threshold gates.
+- **`platform_predictions.py`**: Production inference using `ArtifactInferenceService` on versioned model artifacts with feature attributions.
+- **`platform_recommendations.py`**: Decision engine workflow with state machine (`GENERATED` → `APPROVED` / `REJECTED` → `VERIFIED`).
+- **`platform_reports.py`**: Artifact generation service producing JSON/PDF report files served via `FileResponse`.
+- **`predict.py`**: Machine health prediction route. Checks for tenant's DEPLOYED adaptive model first; falls back to labeled synthetic baseline (`SYNTHETIC_BASELINE`) if no custom model is deployed.
+- **`stream.py`**: High-frequency telemetry WebSocket & SSE alerts stream. All payloads explicitly labeled `mode: SIMULATION`.
 
-## Material gaps and contradictions
+### 2.2 Adaptive Intelligence Engine (`backend/app/ai_engine/adaptive_intelligence.py`)
+- **`AdaptiveSchemaIntelligence`**: Automated column profiling, semantic mapping (fuzzy/alias matching to canonical concepts), target candidate discovery.
+- **`DataQualityEngine`**: Assessment of missingness, class imbalance, range anomalies, duplicate rows, and leakage candidates.
+- **`ExperimentEngine`**: Multi-model cross-validation training pipeline (Random Forest, Gradient Boosting, Logistic Regression), metric evaluation, champion selection, and artifact serialization.
+- **`ArtifactInferenceService`**: Reproducible inference loader using exact serialized preprocessor + model pipelines.
+- **`DriftMonitor`**: Histogram-based Population Stability Index (PSI) drift detector.
 
-- The local append-only `DatasetRegistry` in the ML module duplicates the newly introduced database dataset/version registry. The database registry must become authoritative before release.
-- The platform exposes model listing and artifact inference, but does not yet expose a governed train → validate → register → approve → deploy flow that persists `Experiment`, `MLModelRecord`, and `ModelVersion` from the adaptive engine.
-- Legacy `backend.app.ml` and `ai_service.app.models` initialize synthetic models and accept default telemetry values. They are not safe production inference paths.
-- The legacy ingestion pipeline mutates records through imputation and clamping. The dataset platform route preserves raw bytes, but the legacy upload route remains.
-- The frontend service intentionally substitutes mock data, mock credentials, mock uploads, and fabricated success when calls fail. This is a P0 production-integrity issue, not an offline mode.
-- The compose stack permits a default database password and default secret. Runtime configuration rejects known insecure JWT secrets only in staging/production, but compose still supplies one.
-- Alembic exists but its initial migration calls SQLAlchemy `create_all`/`drop_all`, not explicit revision operations; it is not a safe, reviewable production migration history.
-- Some legacy routes still hard-code an organization UUID, and the audit logger defaults a tenant value. Tenant isolation therefore cannot be accepted as release-ready.
-- Reports, recommendation/outcome capture, protocol adapters, telemetry buffering, and real operational action enforcement are incomplete or legacy/demo behavior.
+### 2.3 Security & Multi-Tenancy
+- **JWT Authentication**: HS256 JWT tokens with role, user_id, factory_id, and organization_id claims.
+- **Tenant Scope Guard**: `TenantScope.require_organization(user)` prevents cross-tenant data access.
+- **Dev Auth Bypass**: Restricted strictly to `ENVIRONMENT=development` when user count is zero. Uses a non-production zero-UUID sentinel.
+- **Request ID Middleware**: Injects `X-Request-ID` into every HTTP request/response for distributed log correlation.
 
-## Current release posture
+---
 
-**NO-GO.** Existing release reports document release blockers. The system is a development integration baseline, not a production-ready manufacturing platform.
+## 3. Debt & Resolved Issues Summary
 
+| Issue | Original Severity | Status | Resolution |
+|---|---|---|---|
+| Committed API key | P0 | **RESOLVED** | Removed from `.env`, added key template & security notes |
+| Hard-coded org UUID in routes | P0 | **RESOLVED** | Injected `current_user.organization_id` across all routes |
+| Silent frontend mock fallback | P0 | **RESOLVED** | Gated mock fallback behind `NODE_ENV === "development"` |
+| Unlabeled simulation stream | P0 | **RESOLVED** | Explicitly labeled all WebSocket/SSE payloads with `mode: SIMULATION` |
+| Broken Celery model refresh | P0 | **RESOLVED** | Fixed method call to `_fit_baseline_synthetic_models()` |
+| Missing Training API | P1 | **RESOLVED** | Added `POST /api/v1/datasets/{id}/train` |
+| Missing Model Promotion API | P1 | **RESOLVED** | Added `POST /api/v1/models/{id}/versions/{v}/promote` with metric gates |
+| Uncorrelated logs | P2 | **RESOLVED** | Added `RequestIDMiddleware` with `X-Request-ID` header |

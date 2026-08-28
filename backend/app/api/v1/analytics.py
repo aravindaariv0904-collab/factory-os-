@@ -3,6 +3,8 @@ from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from backend.app.db.session import get_db_session
 from backend.app.models import Machine, ProductionOrder, DowntimeEvent
+from backend.app.core.deps import TenantScope, get_tenant_user
+from backend.app.core.rbac import CurrentUser
 
 router = APIRouter()
 
@@ -11,9 +13,14 @@ router = APIRouter()
 async def get_oee_analytics(
     timeframe: str = "Last 7 Days",
     db: AsyncSession = Depends(get_db_session),
+    current_user: CurrentUser = Depends(get_tenant_user),
 ):
-    machines = (await db.execute(select(Machine))).scalars().all()
-    orders = (await db.execute(select(ProductionOrder))).scalars().all()
+    machines_stmt = TenantScope.apply_org_filter(select(Machine), Machine, current_user) if hasattr(Machine, "organization_id") else select(Machine)
+    machines = (await db.execute(machines_stmt)).scalars().all()
+    orders_stmt = TenantScope.apply_org_filter(
+        select(ProductionOrder), ProductionOrder, current_user
+    )
+    orders = (await db.execute(orders_stmt)).scalars().all()
 
     count = len(machines)
     if count == 0:
@@ -40,7 +47,10 @@ async def get_oee_analytics(
     if total_produced > 0:
         quality = round(((total_produced - total_defective) / total_produced) * 100, 1)
 
-    downtime_events = (await db.execute(select(DowntimeEvent))).scalars().all()
+    downtime_stmt = TenantScope.apply_org_filter(
+        select(DowntimeEvent), DowntimeEvent, current_user
+    )
+    downtime_events = (await db.execute(downtime_stmt)).scalars().all()
     total_downtime_min = sum(d.duration_minutes or 0 for d in downtime_events)
 
     return {

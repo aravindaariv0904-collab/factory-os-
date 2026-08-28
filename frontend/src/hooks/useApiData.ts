@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 interface UseApiDataOptions<T> {
   fallback: T;
@@ -20,30 +20,54 @@ export function useApiData<T>(
   const [isLoading, setIsLoading] = useState(true);
   const [isFallback, setIsFallback] = useState(false);
 
+  const load = useCallback(
+    (nextFallback: T) => {
+      let cancelled = false;
+
+      setData(nextFallback);
+      setIsLoading(true);
+
+      loader()
+        .then((result) => {
+          if (cancelled) return;
+          setData(result);
+          setIsFallback(false);
+          options?.onSuccess?.(result);
+        })
+        .catch(() => {
+          if (cancelled) return;
+          setData(nextFallback);
+          setIsFallback(true);
+        })
+        .finally(() => {
+          if (!cancelled) setIsLoading(false);
+        });
+
+      return () => {
+        cancelled = true;
+      };
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [loader, options]
+  );
+
   useEffect(() => {
-    let cancelled = false;
-
-    loader()
-      .then((result) => {
-        if (cancelled) return;
-        setData(result);
-        setIsFallback(false);
-        options?.onSuccess?.(result);
-      })
-      .catch(() => {
-        if (cancelled) return;
-        setData(fallback);
-        setIsFallback(true);
-      })
-      .finally(() => {
-        if (!cancelled) setIsLoading(false);
-      });
-
+    const cancel = load(fallback);
     return () => {
-      cancelled = true;
+      cancel();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { data, setData, isLoading, isFallback };
+  const refetch = useCallback(
+    () =>
+      new Promise<void>((resolve) => {
+        load(data);
+        resolve();
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [load, data]
+  );
+
+  return { data, setData, isLoading, isFallback, refetch };
 }

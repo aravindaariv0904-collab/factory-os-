@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from backend.app.api.v1.router import v1_router
 from backend.app.core.config import get_settings
-from backend.app.core.middleware import SecurityHeadersMiddleware
+from backend.app.core.middleware import RequestIDMiddleware, SecurityHeadersMiddleware
 
 settings = get_settings()
 
@@ -15,7 +15,7 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Security Headers & CORS Middleware
+# Security Headers, CORS, and Request Correlation Middleware
 app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
@@ -24,6 +24,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+# RequestIDMiddleware must be outermost so X-Request-ID is available to all layers.
+# Starlette middleware stack is LIFO: last added = first executed.
+app.add_middleware(RequestIDMiddleware)
 
 # Global Exception Handler
 @app.exception_handler(Exception)
