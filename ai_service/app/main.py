@@ -15,7 +15,10 @@ from ai_service.app.models import model_registry, start_background_reload
 setup_logging()
 logger = get_logger(__name__)
 
-ALLOWED_ORIGINS = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",")
+ALLOWED_ORIGINS = os.getenv(
+    "CORS_ORIGINS",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3124,http://127.0.0.1:3124,http://localhost:3214,http://127.0.0.1:3214",
+).split(",")
 
 
 @asynccontextmanager

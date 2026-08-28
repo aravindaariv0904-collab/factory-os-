@@ -8,7 +8,7 @@ from backend.app.core.security import SECRET_KEY
 
 ALLOWED_ORIGINS = os.getenv(
     "CORS_ORIGINS",
-    "http://localhost:3000,http://127.0.0.1:3000",
+    "http://localhost:3000,http://127.0.0.1:3000,http://localhost:3124,http://127.0.0.1:3124,http://localhost:3214,http://127.0.0.1:3214",
 ).split(",")
 
 app = FastAPI(
